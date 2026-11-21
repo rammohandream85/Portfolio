@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Chronos Atlas — Global Solar Terminator & World Clock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- D3.js, D3 Geo Projection (Robinson), and TopoJSON Client -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4/dist/d3-geo-projection.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-app: #efe6d5;
+      --bg-panel: #f7f1e3;
+      --bg-panel-alt: #ebe0c9;
+      --border-color: #c8b89a;
+      --text-primary: #2b2116;
+      --text-secondary: #5c4934;
+      --text-muted: #7d6850;
+      --accent-primary: #8b4513;
+      --accent-secondary: #1e6b7b;
+      --ocean-bg: #dfcfb4;
+      --ocean-grad-1: #e8dcc4;
+      --ocean-grad-2: #d3c09f;
+      --land-fill: #f6eedc;
+      --land-stroke: #8c7659;
+      --graticule-stroke: rgba(115, 92, 64, 0.24);
+      --tropic-stroke: rgba(139, 69, 19, 0.35);
+      --night-fill: rgba(24, 34, 54, 0.44);
+      --night-stroke: rgba(217, 119, 6, 0.75);
+      --ocean-label: rgba(88, 69, 46, 0.42);
+      --font-display: 'Cinzel', serif;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --shadow-panel: 0 4px 20px rgba(43, 33, 22, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh; /* Dynamic viewport height for mobile Safari/Chrome address bars */
+      overflow: hidden;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      transition: background-color 0.35s ease, color 0.35s ease;
+      overscroll-behavior: none;
+    }
+
+    /* Allow text selection inside search input */
+    input[type="text"] {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .display-font {
+      font-family: var(--font-display);
+    }
+
+    .mono-font {
+      font-family: var(--font-mono);
+    }
+
+    /* Safe Area Insets for Notched Phones */
+    #app-header {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    #bottom-slider-bar {
+      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Custom Scrollbar for Sidebar & Clocks Grid */
+    .custom-scroll {
+      -webkit-overflow-scrolling: touch;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 9999px;
+    }
+
+    /* Hide scrollbar for horizontal mobile control strip */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Custom Touch-Friendly Range Slider */
+    input[type="range"].ist-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        #1e293b 0%,
+        #1e293b 22%,
+        #f59e0b 27%,
+        #fde68a 50%,
+        #f59e0b 73%,
+        #1e293b 78%,
+        #1e293b 100%
+      );
+      outline: none;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      touch-action: pan-x;
+    }
+
+    input[type="range"].ist-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 3px solid #ffffff;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.85), 0 2px 6px rgba(0,0,0,0.45);
+      cursor: grab;
+      transition: transform 0.15s ease;
+    }
+
+    input[type="range"].ist-slider::-webkit-slider-thumb:active {
+      transform: scale(1.18);
+      cursor: grabbing;
+    }
+
+    input[type="range"].ist-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 3px solid #ffffff;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.85), 0 2px 6px rgba(0,0,0,0.45);
+      cursor: grab;
+    }
+
+    /* City Pin Animations */
+    @keyframes pulseRingAmber {
+      0% { transform: scale(0.8); opacity: 0.85; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    @keyframes pulseRingCyan {
+      0% { transform: scale(0.8); opacity: 0.85; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    .pin-pulse-day {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: pulseRingAmber 2.4s infinite ease-out;
+    }
+    .pin-pulse-night {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: pulseRingCyan 2.4s infinite ease-out;
+    }
+
+    /* Floating Neon Tooltip (Desktop Hover + Mobile Bottom Sheet Card) */
+    #map-tooltip {
+      position: fixed;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px) scale(0.97);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      background: rgba(11, 17, 32, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.28), 0 12px 30px rgba(0, 0, 0, 0.6);
+      color: #f8fafc;
+    }
+    #map-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    #map-tooltip.day-glow {
+      border-color: rgba(251, 191, 36, 0.8);
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.35), 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+    #map-tooltip.night-glow {
+      border-color: rgba(34, 211, 238, 0.8);
+      box-shadow: 0 0 24px rgba(6, 182, 212, 0.35), 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    /* On mobile screens, dock the tooltip cleanly as a centered floating card above the footer */
+    @media (max-width: 767px) {
+      #map-tooltip {
+        left: 50% !important;
+        top: auto !important;
+        bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
+        transform: translateX(-50%) translateY(10px) scale(0.97);
+        width: calc(100vw - 24px);
+        max-width: 360px;
+        pointer-events: auto;
+      }
+      #map-tooltip.visible {
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+    }
+
+    /* Checkbox styling */
+    .city-checkbox {
+      accent-color: var(--accent-primary);
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* Map SVG cursor & touch gestures */
+    #world-map-svg {
+      cursor: grab;
+      touch-action: none;
+    }
+    #world-map-svg:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body class="flex flex-col w-screen overflow-hidden no-select">
+
+  <!-- TOP HEADER BAR (Responsive Single Row on Desktop, Compact Two-Tier on Mobile) -->
+  <header id="app-header" class="flex-none border-b z-30 transition-colors duration-300"
+          style="background-color: var(--bg-panel); border-color: var(--border-color); box-shadow: var(--shadow-panel);">
+    
+    <!-- Primary Bar -->
+    <div class="h-12 sm:h-14 px-2.5 sm:px-5 flex items-center justify-between gap-2">
+      <!-- Left: Sidebar Drawer Toggle & Brand -->
+      <div class="flex items-center gap-2 min-w-0">
+        <button id="sidebar-toggle-btn" title="Toggle City Filter Drawer" aria-label="Toggle City Filter Drawer"
+                class="min-w-[38px] min-h-[38px] p-2 rounded-lg border transition-all hover:opacity-80 active:scale-95 flex items-center justify-center relative"
+                style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/>
+          </svg>
+          <span id="mobile-city-badge" class="md:hidden absolute -top-1.5 -right-1.5 px-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center shadow"
+                style="background-color: var(--accent-primary); color: #fff;">24</span>
+        </button>
+
+        <div class="flex items-center gap-2 truncate">
+          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 border"
+               style="background-color: var(--bg-panel-alt); border-color: var(--border-color);">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--accent-primary);">
+              <circle cx="12" cy="12" r="9.5"/>
+              <ellipse cx="12" cy="12" rx="4.2" ry="9.5"/>
+              <path d="M2.8 9h18.4M2.8 15h18.4"/>
+            </svg>
+          </div>
+          <div class="truncate">
+            <h1 class="display-font text-xs sm:text-base font-bold tracking-wide leading-tight truncate">CHRONOS ATLAS</h1>
+            <p class="text-[10px] sm:text-[11px] leading-tight truncate hidden sm:block" style="color: var(--text-muted);">
+              Robinson Solar Terminator &amp; Global Timepiece
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: View Tabs (World Map vs Clocks Dashboard) -->
+      <div class="flex items-center p-0.5 sm:p-1 rounded-xl border shrink-0"
+           style="background-color: var(--bg-panel-alt); border-color: var(--border-color);">
+        <button id="tab-map" class="tab-btn px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+          <span>Map</span>
+        </button>
+        <button id="tab-clocks" class="tab-btn px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2"/>
+          </svg>
+          <span>Clocks</span>
+        </button>
+      </div>
+
+      <!-- Desktop Right Controls (Hidden on <640px, shown in compact strip below on mobile) -->
+      <div class="hidden sm:flex items-center gap-2 shrink-0">
+        <!-- Show All Times Toggle -->
+        <button id="toggle-times-btn"
+                class="px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+                style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+          <span class="times-status-dot w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="hidden md:inline">Show All:</span>
+          <span class="times-status-text font-bold">ON</span>
+        </button>
+
+        <!-- 12-Hour Format Toggle (Default ON) -->
+        <button id="toggle-12hr-btn" title="Toggle 12-Hour / 24-Hour Time Format"
+                class="px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+                style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+          <span class="format-12hr-dot w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>12 Hr:</span>
+          <span class="format-12hr-text font-bold">ON</span>
+        </button>
+
+        <!-- Theme Switcher Button -->
+        <button id="theme-switcher-btn" title="Cycle Map & UI Theme"
+                class="px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+                style="background-color: var(--accent-primary); border-color: var(--border-color); color: #ffffff;">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+          </svg>
+          <span class="hidden lg:inline">Theme:</span>
+          <span class="theme-name-label truncate max-w-[140px]">Vintage Parchment</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Secondary Quick-Action Strip (<640px only) -->
+    <div class="sm:hidden px-2.5 pb-2 pt-0.5 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar border-t"
+         style="border-color: var(--border-color);">
+      <button id="toggle-times-btn-mobile"
+              class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold flex items-center gap-1.5 shrink-0 active:scale-95"
+              style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+        <span class="times-status-dot w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Pins:</span>
+        <span class="times-status-text font-bold">ON</span>
+      </button>
+
+      <button id="toggle-12hr-btn-mobile"
+              class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold flex items-center gap-1.5 shrink-0 active:scale-95"
+              style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+        <span class="format-12hr-dot w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>12 Hr:</span>
+        <span class="format-12hr-text font-bold">ON</span>
+      </button>
+
+      <button id="theme-switcher-btn-mobile"
+              class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold flex items-center gap-1.5 shrink-0 active:scale-95 ml-auto"
+              style="background-color: var(--accent-primary); border-color: var(--border-color); color: #ffffff;">
+        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+        </svg>
+        <span class="theme-name-label truncate max-w-[125px]">Vintage Parchment</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE (SIDEBAR DRAWER + VIEWPORT) -->
+  <div class="flex-1 flex min-h-0 relative overflow-hidden">
+
+    <!-- MOBILE BACKDROP OVERLAY FOR SIDEBAR DRAWER -->
+    <div id="sidebar-backdrop"
+         class="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30 hidden md:hidden transition-opacity"></div>
+
+    <!-- LEFT SCROLLABLE SIDEBAR (Slide-over Drawer on Mobile, Docked Panel on Desktop) -->
+    <aside id="city-sidebar"
+           class="fixed md:static inset-y-0 left-0 w-[285px] sm:w-72 flex-none border-r flex flex-col min-h-0 z-40 md:z-20 transition-transform duration-300 ease-out -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none"
+           style="background-color: var(--bg-panel); border-color: var(--border-color); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);">
+      
+      <!-- Sidebar Header & Bulk Controls -->
+      <div class="p-3 border-b flex flex-col gap-2 shrink-0" style="border-color: var(--border-color);">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-secondary);">
+            Global Cities (<span id="selected-count">24</span>/24)
+          </span>
+          <div class="flex items-center gap-1.5">
+            <button id="select-all-btn"
+                    class="px-2.5 py-1 text-[11px] font-semibold rounded border transition-opacity hover:opacity-80 active:scale-95"
+                    style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+              All
+            </button>
+            <button id="clear-all-btn"
+                    class="px-2.5 py-1 text-[11px] font-semibold rounded border transition-opacity hover:opacity-80 active:scale-95"
+                    style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+              None
+            </button>
+            <!-- Close Drawer Button (Mobile Only) -->
+            <button id="close-sidebar-mobile-btn" aria-label="Close City Drawer"
+                    class="md:hidden ml-1 p-1 rounded-lg border active:scale-95"
+                    style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <!-- Quick Search Input (16px font on mobile prevents iOS Safari auto-zoom) -->
+        <input id="city-search-input" type="text" placeholder="Filter city or country..."
+               class="w-full px-3 py-2 text-base sm:text-xs rounded-lg border outline-none transition-colors"
+               style="background-color: var(--bg-panel-alt); border-color: var(--border-color); color: var(--text-primary);" />
+      </div>
+
+      <!-- Scrollable Checkbox List -->
+      <div id="city-checkbox-list" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </aside>
+
+    <!-- CENTER CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 min-h-0 relative overflow-hidden">
+
+      <!-- VIEW 1: INTERACTIVE ROBINSON WORLD MAP -->
+      <section id="map-view" class="flex-1 relative w-full h-full overflow-hidden flex items-center justify-center"
+               style="background-color: var(--ocean-bg);">
+        
+        <!-- Loading State Overlay -->
+        <div id="map-loading" class="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+          <div class="w-9 h-9 border-4 rounded-full animate-spin mb-2"
+               style="border-color: var(--border-color); border-top-color: var(--accent-primary);"></div>
+          <span class="text-xs font-semibold tracking-wide" style="color: var(--text-secondary);">
+            Projecting Robinson World Atlas...
+          </span>
+        </div>
+
+        <!-- D3 SVG World Map Container -->
+        <svg id="world-map-svg" class="w-full h-full block"></svg>
+
+        <!-- Solar Telemetry Pill (Top-Left Overlay inside Map, compact on mobile) -->
+        <div class="flex absolute top-2 left-2 sm:top-3 sm:left-3 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-medium items-center gap-2 sm:gap-3 shadow-md backdrop-blur-md pointer-events-none"
+             style="background-color: var(--bg-panel); border-color: var(--border-color); color: var(--text-secondary);">
+          <span>Sun: <strong id="subsolar-readout" class="mono-font" style="color: var(--text-primary);">--°N, --°E</strong></span>
+          <span>•</span>
+          <span>UTC: <strong id="utc-readout" class="mono-font" style="color: var(--text-primary);">--:--:--</strong></span>
+        </div>
+
+        <!-- Map Legend & Touch-Friendly Zoom Controls (Bottom-Right Overlay inside Map) -->
+        <div class="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 flex flex-col items-end gap-2 z-10 pointer-events-auto">
+          <!-- Zoom Buttons (40x40px touch targets) -->
+          <div class="flex flex-col rounded-xl border overflow-hidden shadow-md"
+               style="background-color: var(--bg-panel); border-color: var(--border-color);">
+            <button id="zoom-in-btn" title="Zoom In" aria-label="Zoom In" class="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:opacity-80 active:scale-95 transition-all border-b" style="border-color: var(--border-color);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button id="zoom-out-btn" title="Zoom Out" aria-label="Zoom Out" class="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:opacity-80 active:scale-95 transition-all border-b" style="border-color: var(--border-color);">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+            </button>
+            <button id="zoom-reset-btn" title="Reset Map View" aria-label="Reset Map View" class="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:opacity-80 active:scale-95 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+          </div>
+
+          <!-- Day / Night Legend Pill -->
+          <div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-medium flex items-center gap-2.5 sm:gap-3 shadow-md backdrop-blur-md"
+               style="background-color: var(--bg-panel); border-color: var(--border-color); color: var(--text-primary);">
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_8px_#f59e0b]"></span>
+              Day
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 inline-block shadow-[0_0_8px_#22d3ee]"></span>
+              Night
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: ANALOG CLOCKS DASHBOARD -->
+      <section id="clocks-view" class="hidden flex-1 flex-col min-h-0 w-full h-full overflow-hidden"
+               style="background-color: var(--bg-app);">
+        
+        <!-- Dashboard Sub-bar for Customization -->
+        <div class="flex-none px-3 sm:px-4 py-2 sm:py-2.5 border-b flex items-center justify-between gap-2"
+             style="background-color: var(--bg-panel-alt); border-color: var(--border-color);">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-secondary);">
+              Timepieces
+            </span>
+            <span id="dashboard-city-badge" class="px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                  style="background-color: var(--accent-primary); color: #fff;">
+              24 Active
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1.5 sm:gap-2 text-xs">
+            <label for="dial-style-select" class="font-medium hidden xs:inline" style="color: var(--text-secondary);">Dial:</label>
+            <select id="dial-style-select"
+                    class="px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-none cursor-pointer"
+                    style="background-color: var(--bg-panel); border-color: var(--border-color); color: var(--text-primary);">
+              <option value="classic">Classic Railway</option>
+              <option value="minimal">Modern Minimal</option>
+              <option value="chronograph">Aviation Numeral</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scrollable Responsive Grid of Canvas Analog Clocks (2 cols on phones, up to 6 on XL) -->
+        <div id="clocks-grid"
+             class="flex-1 overflow-y-auto custom-scroll p-2.5 sm:p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5 sm:gap-4 content-start">
+          <!-- Clock Cards injected dynamically -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- BOTTOM ANCHORED 24-HOUR IST TIME SLIDER BAR -->
+  <footer id="bottom-slider-bar"
+          class="flex-none px-3 sm:px-6 pt-2 border-t flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-5 z-30 transition-colors duration-300"
+          style="background-color: var(--bg-panel); border-color: var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.08);">
+    
+    <!-- IST Current / Simulated Readout -->
+    <div class="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <span id="live-indicator-badge"
+              class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-600 border border-emerald-500/40 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          LIVE
+        </span>
+        <div>
+          <div class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider" style="color: var(--text-muted);">
+            India Standard Time (IST)
+          </div>
+          <div id="ist-digital-display" class="mono-font text-xs sm:text-base font-bold leading-tight" style="color: var(--text-primary);">
+            12:00:00 PM IST
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Reset Button -->
+      <button id="reset-live-btn-mobile"
+              class="sm:hidden px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all active:scale-95"
+              style="background-color: var(--accent-primary); border-color: var(--border-color); color: #ffffff;">
+        Reset Live
+      </button>
+    </div>
+
+    <!-- Center 24-Hour IST Range Slider -->
+    <div class="flex-1 w-full flex flex-col gap-1 max-w-4xl">
+      <div id="slider-scale-labels" class="flex justify-between text-[9px] sm:text-[10px] mono-font font-semibold px-0.5" style="color: var(--text-muted);">
+        <span>12 AM</span>
+        <span>04 AM</span>
+        <span>08 AM</span>
+        <span>12 PM</span>
+        <span>04 PM</span>
+        <span>08 PM</span>
+        <span>11:59 PM</span>
+      </div>
+      <input id="ist-time-slider" type="range" min="0" max="1439" step="1" value="720" class="ist-slider" aria-label="24-Hour IST Time Scrubber" />
+    </div>
+
+    <!-- Desktop Reset to Live Time Button -->
+    <button id="reset-live-btn"
+            class="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-semibold shrink-0 transition-all hover:opacity-90 active:scale-95 shadow-sm"
+            style="background-color: var(--accent-primary); border-color: var(--border-color); color: #ffffff;">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span>Reset to Live Time</span>
+    </button>
+  </footer>
+
+  <!-- FLOATING NEON TOOLTIP (Desktop Hover + Mobile Dismissible Bottom Card) -->
+  <div id="map-tooltip" class="rounded-xl p-3 min-w-[220px]">
+    <div class="flex items-center justify-between gap-3 mb-1.5">
+      <div class="flex items-center gap-2">
+        <span id="tt-flag" class="text-xl leading-none">🇮🇳</span>
+        <div class="font-bold text-sm text-white leading-tight">
+          <span id="tt-city">New Delhi</span>
+          <span class="text-slate-300 font-medium text-xs">(<span id="tt-country">India</span>)</span>
+        </div>
+      </div>
+      <!-- Mobile Close Button -->
+      <button id="tt-close-btn" aria-label="Close city details" class="md:hidden text-slate-400 hover:text-white p-1 -mr-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="flex items-center justify-between gap-2 mb-2">
+      <span id="tt-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+        ☀️ Daytime
+      </span>
+      <span id="tt-tz" class="mono-font text-[11px] font-semibold text-sky-300">IST (UTC+5:30)</span>
+    </div>
+    <div class="pt-1.5 border-t border-slate-700/80 flex items-baseline justify-between gap-3">
+      <span id="tt-time" class="mono-font text-lg font-bold tracking-tight text-white">02:30:45 PM</span>
+      <span id="tt-weekday" class="text-xs font-medium text-slate-300">Tuesday</span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. DATA DEFINITIONS: 6 THEMES & 24 GLOBAL CITIES WITH SMART LABEL OFFSETS
+     * ============================================================================
+     */
+    const THEMES = [
+      {
+        id: 'vintage-parchment',
+        name: 'Vintage Parchment',
+        vars: {
+          '--bg-app': '#efe6d5',
+          '--bg-panel': '#f7f1e3',
+          '--bg-panel-alt': '#ebe0c9',
+          '--border-color': '#c8b89a',
+          '--text-primary': '#2b2116',
+          '--text-secondary': '#5c4934',
+          '--text-muted': '#7d6850',
+          '--accent-primary': '#8b4513',
+          '--accent-secondary': '#1e6b7b',
+          '--ocean-bg': '#dfcfb4',
+          '--ocean-grad-1': '#ebe0ca',
+          '--ocean-grad-2': '#d1be9c',
+          '--land-fill': '#f8f2e4',
+          '--land-stroke': '#8c7659',
+          '--graticule-stroke': 'rgba(115, 92, 64, 0.24)',
+          '--tropic-stroke': 'rgba(139, 69, 19, 0.38)',
+          '--night-fill': 'rgba(22, 31, 48, 0.45)',
+          '--night-stroke': 'rgba(217, 119, 6, 0.8)',
+          '--ocean-label': 'rgba(88, 69, 46, 0.44)',
+          '--font-display': "'Cinzel', serif"
+        },
+        pinLabelBg: 'rgba(247, 241, 227, 0.92)',
+        pinLabelBorder: '#8c7659',
+        pinLabelText: '#2b2116',
+        clockBg: '#fbf7ee',
+        clockRim: '#8b4513',
+        clockTick: '#3e2f20'
+      },
+      {
+        id: 'classic-atlas',
+        name: 'Classic Atlas',
+        vars: {
+          '--bg-app': '#e2eef8',
+          '--bg-panel': '#ffffff',
+          '--bg-panel-alt': '#f1f6fb',
+          '--border-color': '#bfd3e6',
+          '--text-primary': '#132a46',
+          '--text-secondary': '#335275',
+          '--text-muted': '#5b7a9c',
+          '--accent-primary': '#1d4ed8',
+          '--accent-secondary': '#0284c7',
+          '--ocean-bg': '#cbe3f7',
+          '--ocean-grad-1': '#dcecfb',
+          '--ocean-grad-2': '#b6d6f2',
+          '--land-fill': '#f4f7ec',
+          '--land-stroke': '#6b8e78',
+          '--graticule-stroke': 'rgba(29, 78, 216, 0.16)',
+          '--tropic-stroke': 'rgba(220, 38, 38, 0.32)',
+          '--night-fill': 'rgba(15, 23, 42, 0.46)',
+          '--night-stroke': 'rgba(245, 158, 11, 0.85)',
+          '--ocean-label': 'rgba(25, 68, 115, 0.38)',
+          '--font-display': "'Inter', sans-serif"
+        },
+        pinLabelBg: 'rgba(255, 255, 255, 0.92)',
+        pinLabelBorder: '#93b4d4',
+        pinLabelText: '#132a46',
+        clockBg: '#ffffff',
+        clockRim: '#1d4ed8',
+        clockTick: '#132a46'
+      },
+      {
+        id: 'dark-neon',
+        name: 'Dark Neon',
+        vars: {
+          '--bg-app': '#060913',
+          '--bg-panel': '#0d1324',
+          '--bg-panel-alt': '#141d36',
+          '--border-color': '#233259',
+          '--text-primary': '#f1f5f9',
+          '--text-secondary': '#94a3b8',
+          '--text-muted': '#64748b',
+          '--accent-primary': '#06b6d4',
+          '--accent-secondary': '#f59e0b',
+          '--ocean-bg': '#050811',
+          '--ocean-grad-1': '#0a1124',
+          '--ocean-grad-2': '#03050c',
+          '--land-fill': '#131c33',
+          '--land-stroke': '#2dd4bf',
+          '--graticule-stroke': 'rgba(45, 212, 191, 0.14)',
+          '--tropic-stroke': 'rgba(244, 63, 94, 0.38)',
+          '--night-fill': 'rgba(1, 3, 10, 0.62)',
+          '--night-stroke': 'rgba(251, 191, 36, 0.9)',
+          '--ocean-label': 'rgba(56, 189, 248, 0.28)',
+          '--font-display': "'Inter', sans-serif"
+        },
+        pinLabelBg: 'rgba(10, 16, 32, 0.92)',
+        pinLabelBorder: '#06b6d4',
+        pinLabelText: '#f8fafc',
+        clockBg: '#0f172a',
+        clockRim: '#06b6d4',
+        clockTick: '#e2e8f0'
+      },
+      {
+        id: 'royal-blueprint',
+        name: 'Royal Blueprint',
+        vars: {
+          '--bg-app': '#0a2540',
+          '--bg-panel': '#0e3154',
+          '--bg-panel-alt': '#143e69',
+          '--border-color': '#2b6cb0',
+          '--text-primary': '#ebf8ff',
+          '--text-secondary': '#bee3f8',
+          '--text-muted': '#90cdf4',
+          '--accent-primary': '#3182ce',
+          '--accent-secondary': '#63b3ed',
+          '--ocean-bg': '#0b2d52',
+          '--ocean-grad-1': '#103b69',
+          '--ocean-grad-2': '#071f3b',
+          '--land-fill': '#15467a',
+          '--land-stroke': '#90cdf4',
+          '--graticule-stroke': 'rgba(190, 227, 248, 0.24)',
+          '--tropic-stroke': 'rgba(251, 191, 36, 0.45)',
+          '--night-fill': 'rgba(4, 14, 28, 0.54)',
+          '--night-stroke': 'rgba(253, 224, 71, 0.85)',
+          '--ocean-label': 'rgba(190, 227, 248, 0.35)',
+          '--font-display': "'JetBrains Mono', monospace"
+        },
+        pinLabelBg: 'rgba(11, 41, 74, 0.92)',
+        pinLabelBorder: '#63b3ed',
+        pinLabelText: '#ebf8ff',
+        clockBg: '#0d345c',
+        clockRim: '#63b3ed',
+        clockTick: '#ebf8ff'
+      },
+      {
+        id: 'arctic-frost',
+        name: 'Arctic Frost',
+        vars: {
+          '--bg-app': '#eef4f8',
+          '--bg-panel': '#f8fbfd',
+          '--bg-panel-alt': '#e5eef5',
+          '--border-color': '#cbd9e6',
+          '--text-primary': '#1e293b',
+          '--text-secondary': '#475569',
+          '--text-muted': '#64748b',
+          '--accent-primary': '#0284c7',
+          '--accent-secondary': '#0ea5e9',
+          '--ocean-bg': '#dce8f2',
+          '--ocean-grad-1': '#eaf2f8',
+          '--ocean-grad-2': '#cddde9',
+          '--land-fill': '#ffffff',
+          '--land-stroke': '#94a3b8',
+          '--graticule-stroke': 'rgba(100, 116, 139, 0.2)',
+          '--tropic-stroke': 'rgba(2, 132, 199, 0.32)',
+          '--night-fill': 'rgba(15, 23, 42, 0.42)',
+          '--night-stroke': 'rgba(245, 158, 11, 0.8)',
+          '--ocean-label': 'rgba(71, 85, 105, 0.35)',
+          '--font-display': "'Inter', sans-serif"
+        },
+        pinLabelBg: 'rgba(255, 255, 255, 0.94)',
+        pinLabelBorder: '#94a3b8',
+        pinLabelText: '#0f172a',
+        clockBg: '#ffffff',
+        clockRim: '#0284c7',
+        clockTick: '#1e293b'
+      },
+      {
+        id: 'emerald-midnight',
+        name: 'Emerald Midnight',
+        vars: {
+          '--bg-app': '#041410',
+          '--bg-panel': '#08221b',
+          '--bg-panel-alt': '#0d3127',
+          '--border-color': '#1b5444',
+          '--text-primary': '#ecfdf5',
+          '--text-secondary': '#a7f3d0',
+          '--text-muted': '#6ee7b7',
+          '--accent-primary': '#10b981',
+          '--accent-secondary': '#fbbf24',
+          '--ocean-bg': '#041712',
+          '--ocean-grad-1': '#08261e',
+          '--ocean-grad-2': '#020d0a',
+          '--land-fill': '#0e362b',
+          '--land-stroke': '#34d399',
+          '--graticule-stroke': 'rgba(52, 211, 153, 0.16)',
+          '--tropic-stroke': 'rgba(251, 191, 36, 0.38)',
+          '--night-fill': 'rgba(1, 8, 6, 0.6)',
+          '--night-stroke': 'rgba(251, 191, 36, 0.88)',
+          '--ocean-label': 'rgba(110, 231, 183, 0.28)',
+          '--font-display': "'Cinzel', serif"
+        },
+        pinLabelBg: 'rgba(6, 28, 22, 0.92)',
+        pinLabelBorder: '#10b981',
+        pinLabelText: '#ecfdf5',
+        clockBg: '#092920',
+        clockRim: '#10b981',
+        clockTick: '#d1fae5'
+      }
+    ];
+
+    // 24 Major Global Cities with IANA Timezones, Coordinates, Flags, and Smart Label Offsets (dx, dy)
+    const CITIES = [
+      { id: 'new-delhi',    name: 'New Delhi',     country: 'India',        flag: '🇮🇳', lat: 28.6139,  lon: 77.2090,   tz: 'Asia/Kolkata',                  dx: 10,  dy: -10, anchor: 'start' },
+      { id: 'mumbai',       name: 'Mumbai',        country: 'India',        flag: '🇮🇳', lat: 19.0760,  lon: 72.8777,   tz: 'Asia/Kolkata',                  dx: -10, dy: 12,  anchor: 'end'   },
+      { id: 'dubai',        name: 'Dubai',         country: 'UAE',          flag: '🇦🇪', lat: 25.2048,  lon: 55.2708,   tz: 'Asia/Dubai',                    dx: -10, dy: 4,   anchor: 'end'   },
+      { id: 'singapore',    name: 'Singapore',     country: 'Singapore',    flag: '🇸🇬', lat: 1.3521,   lon: 103.8198,  tz: 'Asia/Singapore',                dx: 10,  dy: 8,   anchor: 'start' },
+      { id: 'beijing',      name: 'Beijing',       country: 'China',        flag: '🇨🇳', lat: 39.9042,  lon: 116.4074,  tz: 'Asia/Shanghai',                 dx: -10, dy: -10, anchor: 'end'   },
+      { id: 'shanghai',     name: 'Shanghai',      country: 'China',        flag: '🇨🇳', lat: 31.2304,  lon: 121.4737,  tz: 'Asia/Shanghai',                 dx: 10,  dy: 10,  anchor: 'start' },
+      { id: 'tokyo',        name: 'Tokyo',         country: 'Japan',        flag: '🇯🇵', lat: 35.6762,  lon: 139.6503,  tz: 'Asia/Tokyo',                    dx: 10,  dy: -4,  anchor: 'start' },
+      { id: 'moscow',       name: 'Moscow',        country: 'Russia',       flag: '🇷🇺', lat: 55.7558,  lon: 37.6173,   tz: 'Europe/Moscow',                 dx: 10,  dy: -8,  anchor: 'start' },
+      { id: 'london',       name: 'London',        country: 'UK',           flag: '🇬🇧', lat: 51.5072,  lon: -0.1276,   tz: 'Europe/London',                 dx: -10, dy: -10, anchor: 'end'   },
+      { id: 'paris',        name: 'Paris',         country: 'France',       flag: '🇫🇷', lat: 48.8566,  lon: 2.3522,    tz: 'Europe/Paris',                  dx: -10, dy: 12,  anchor: 'end'   },
+      { id: 'berlin',       name: 'Berlin',        country: 'Germany',      flag: '🇩🇪', lat: 52.5200,  lon: 13.4050,   tz: 'Europe/Berlin',                 dx: 10,  dy: -12, anchor: 'start' },
+      { id: 'frankfurt',    name: 'Frankfurt',     country: 'Germany',      flag: '🇩🇪', lat: 50.1109,  lon: 8.6821,    tz: 'Europe/Berlin',                 dx: 10,  dy: 12,  anchor: 'start' },
+      { id: 'cairo',        name: 'Cairo',         country: 'Egypt',        flag: '🇪🇬', lat: 30.0444,  lon: 31.2357,   tz: 'Africa/Cairo',                  dx: -10, dy: 6,   anchor: 'end'   },
+      { id: 'johannesburg', name: 'Johannesburg',  country: 'South Africa', flag: '🇿🇦', lat: -26.2041, lon: 28.0473,   tz: 'Africa/Johannesburg',           dx: 10,  dy: 6,   anchor: 'start' },
+      { id: 'sydney',       name: 'Sydney',        country: 'Australia',    flag: '🇦🇺', lat: -33.8688, lon: 151.2093,  tz: 'Australia/Sydney',              dx: 10,  dy: -6,  anchor: 'start' },
+      { id: 'melbourne',    name: 'Melbourne',     country: 'Australia',    flag: '🇦🇺', lat: -37.8136, lon: 144.9631,  tz: 'Australia/Melbourne',           dx: -10, dy: 12,  anchor: 'end'   },
+      { id: 'auckland',     name: 'Auckland',      country: 'New Zealand',  flag: '🇳🇿', lat: -36.8485, lon: 174.7633,  tz: 'Pacific/Auckland',              dx: 10,  dy: 4,   anchor: 'start' },
+      { id: 'new-york',     name: 'New York',      country: 'USA',          flag: '🇺🇸', lat: 40.7128,  lon: -74.0060,  tz: 'America/New_York',              dx: 10,  dy: 8,   anchor: 'start' },
+      { id: 'chicago',      name: 'Chicago',       country: 'USA',          flag: '🇺🇸', lat: 41.8781,  lon: -87.6298,  tz: 'America/Chicago',               dx: -10, dy: 10,  anchor: 'end'   },
+      { id: 'san-francisco',name: 'San Francisco', country: 'USA',          flag: '🇺🇸', lat: 37.7749,  lon: -122.4194, tz: 'America/Los_Angeles',           dx: -10, dy: 4,   anchor: 'end'   },
+      { id: 'toronto',      name: 'Toronto',       country: 'Canada',       flag: '🇨🇦', lat: 43.6532,  lon: -79.3832,  tz: 'America/Toronto',               dx: 10,  dy: -10, anchor: 'start' },
+      { id: 'vancouver',    name: 'Vancouver',     country: 'Canada',       flag: '🇨🇦', lat: 49.2827,  lon: -123.1207, tz: 'America/Vancouver',             dx: -10, dy: -8,  anchor: 'end'   },
+      { id: 'sao-paulo',    name: 'São Paulo',     country: 'Brazil',       flag: '🇧🇷', lat: -23.5505, lon: -46.6333,  tz: 'America/Sao_Paulo',             dx: 10,  dy: 4,   anchor: 'start' },
+      { id: 'buenos-aires', name: 'Buenos Aires',  country: 'Argentina',    flag: '🇦🇷', lat: -34.6037, lon: -58.3816,  tz: 'America/Argentina/Buenos_Aires',dx: -10, dy: 8,   anchor: 'end'   }
+    ];
+
+    const OCEAN_LABELS = [
+      { name: 'NORTH PACIFIC OCEAN', lon: -155, lat: 24 },
+      { name: 'SOUTH PACIFIC OCEAN', lon: -130, lat: -26 },
+      { name: 'NORTH ATLANTIC OCEAN', lon: -40, lat: 28 },
+      { name: 'SOUTH ATLANTIC OCEAN', lon: -18, lat: -25 },
+      { name: 'INDIAN OCEAN', lon: 78, lat: -22 },
+      { name: 'ARCTIC OCEAN', lon: 0, lat: 78 },
+      { name: 'SOUTHERN OCEAN', lon: 20, lat: -63 }
+    ];
+
+    /**
+     * ============================================================================
+     * 2. APPLICATION STATE
+     * ============================================================================
+     */
+    const isMobileViewport = () => window.innerWidth < 768;
+
+    const state = {
+      themeIndex: 0,
+      activeTab: 'map', // 'map' | 'clocks'
+      showAllTimes: true,
+      use12Hour: true,
+      selectedCityIds: new Set(CITIES.map(c => c.id)),
+      isLiveMode: true,
+      simulatedIstMinutes: 0,
+      hoveredCityId: null,
+      dialStyle: 'classic',
+      sidebarOpen: !isMobileViewport()
+    };
+
+    function getCurrentIstMinutes() {
+      const now = new Date();
+      const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+      return (utcMinutes + 330) % 1440;
+    }
+    state.simulatedIstMinutes = getCurrentIstMinutes();
+
+    /**
+     * ============================================================================
+     * 3. TIME & ASTRONOMICAL SOLAR TERMINATOR CALCULATIONS
+     * ============================================================================
+     */
+    function getEffectiveDate() {
+      const now = new Date();
+      if (state.isLiveMode) {
+        return now;
+      }
+      const istOffsetMs = 330 * 60 * 1000;
+      const nowIst = new Date(now.getTime() + istOffsetMs);
+      const year = nowIst.getUTCFullYear();
+      const month = nowIst.getUTCMonth();
+      const day = nowIst.getUTCDate();
+      const hours = Math.floor(state.simulatedIstMinutes / 60);
+      const minutes = state.simulatedIstMinutes % 60;
+      const seconds = now.getUTCSeconds();
+      const ms = now.getUTCMilliseconds();
+
+      const targetUtcMs = Date.UTC(year, month, day, hours, minutes, seconds, ms) - istOffsetMs;
+      return new Date(targetUtcMs);
+    }
+
+    function getSubsolarPoint(date) {
+      const startOfYear = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0);
+      const dayOfYear = (date.getTime() - startOfYear) / 86400000 + 1;
+      const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+
+      const gamma = ((2 * Math.PI) / 365.25) * (dayOfYear - 1 + (utcHours - 12) / 24);
+
+      const eqTime = 229.18 * (
+        0.000075 +
+        0.001868 * Math.cos(gamma) -
+        0.032077 * Math.sin(gamma) -
+        0.014615 * Math.cos(2 * gamma) -
+        0.040849 * Math.sin(2 * gamma)
+      );
+
+      const decl =
+        0.006918 -
+        0.399912 * Math.cos(gamma) +
+        0.070257 * Math.sin(gamma) -
+        0.006758 * Math.cos(2 * gamma) +
+        0.000907 * Math.sin(2 * gamma) -
+        0.002697 * Math.cos(3 * gamma) +
+        0.00148 * Math.sin(3 * gamma);
+
+      const subsolarLat = (decl * 180) / Math.PI;
+
+      const trueSolarTimeMin = utcHours * 60 + eqTime;
+      let subsolarLon = 180 - trueSolarTimeMin / 4;
+      while (subsolarLon > 180) subsolarLon -= 360;
+      while (subsolarLon < -180) subsolarLon += 360;
+
+      return { lat: subsolarLat, lon: subsolarLon };
+    }
+
+    function getNightGeoJson(date) {
+      const sun = getSubsolarPoint(date);
+      const antipode = [
+        sun.lon > 0 ? sun.lon - 180 : sun.lon + 180,
+        -sun.lat
+      ];
+      return d3.geoCircle().center(antipode).radius(90).precision(1)();
+    }
+
+    function isCityDaytime(city, subsolar) {
+      const deg2rad = Math.PI / 180;
+      const lat1 = city.lat * deg2rad;
+      const lat2 = subsolar.lat * deg2rad;
+      const dLon = (city.lon - subsolar.lon) * deg2rad;
+      const cosZenith =
+        Math.sin(lat1) * Math.sin(lat2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      return cosZenith > -0.0145;
+    }
+
+    const formatterCache = new Map();
+    function getCityTimeInfo(city, date) {
+      let fmt = formatterCache.get(city.tz);
+      if (!fmt) {
+        fmt = new Intl.DateTimeFormat('en-GB', {
+          timeZone: city.tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          timeZoneName: 'short',
+          hour12: false
+        });
+        formatterCache.set(city.tz, fmt);
+      }
+
+      const parts = fmt.formatToParts(date);
+      const map = {};
+      for (const p of parts) {
+        map[p.type] = p.value;
+      }
+
+      const hour = parseInt(map.hour === '24' ? '0' : map.hour, 10);
+      const minute = parseInt(map.minute, 10);
+      const second = parseInt(map.second, 10);
+
+      const hh24 = String(hour).padStart(2, '0');
+      const mm = String(minute).padStart(2, '0');
+      const ss = String(second).padStart(2, '0');
+
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12Num = hour % 12 === 0 ? 12 : hour % 12;
+      const hh12 = String(hour12Num).padStart(2, '0');
+
+      const hm = state.use12Hour ? `${hh12}:${mm} ${ampm}` : `${hh24}:${mm}`;
+      const hms = state.use12Hour ? `${hh12}:${mm}:${ss} ${ampm}` : `${hh24}:${mm}:${ss}`;
+
+      return {
+        hour,
+        minute,
+        second,
+        hm,
+        hms,
+        weekday: map.weekday || '',
+        dateStr: `${map.day || ''} ${map.month || ''}`.trim(),
+        tzAbbr: map.timeZoneName || ''
+      };
+    }
+
+    /**
+     * ============================================================================
+     * 4. D3 ROBINSON PROJECTION MAP INITIALIZATION & RENDERING
+     * ============================================================================
+     */
+    const svg = d3.select('#world-map-svg');
+    let mapWidth = 1000;
+    let mapHeight = 520;
+    let projection = d3.geoRobinson();
+    let pathGenerator = d3.geoPath().projection(projection);
+    let worldLandGeo = null;
+
+    const defs = svg.append('defs');
+    const oceanGrad = defs.append('radialGradient')
+      .attr('id', 'ocean-radial-grad')
+      .attr('cx', '50%')
+      .attr('cy', '50%')
+      .attr('r', '65%');
+    oceanGrad.append('stop').attr('offset', '0%').attr('id', 'ocean-stop-1');
+    oceanGrad.append('stop').attr('offset', '100%').attr('id', 'ocean-stop-2');
+
+    const mapRoot = svg.append('g').attr('id', 'map-zoom-layer');
+    const sphereLayer = mapRoot.append('g').attr('id', 'layer-sphere');
+    const graticuleLayer = mapRoot.append('g').attr('id', 'layer-graticules');
+    const landLayer = mapRoot.append('g').attr('id', 'layer-land');
+    const oceanLabelsLayer = mapRoot.append('g').attr('id', 'layer-ocean-labels');
+    const terminatorLayer = mapRoot.append('g').attr('id', 'layer-terminator');
+    const pinsLayer = mapRoot.append('g').attr('id', 'layer-pins');
+
+    const zoomBehavior = d3.zoom()
+      .scaleExtent([1, 8])
+      .on('zoom', (event) => {
+        mapRoot.attr('transform', event.transform);
+        const k = event.transform.k;
+        const baseScale = isMobileViewport() ? 0.85 : 1;
+        pinsLayer.selectAll('.city-pin-group').attr('transform', function(d) {
+          const coords = projection([d.lon, d.lat]);
+          if (!coords) return 'translate(-999,-999)';
+          return `translate(${coords[0]}, ${coords[1]}) scale(${baseScale / Math.pow(k, 0.55)})`;
+        });
+      });
+
+    svg.call(zoomBehavior);
+
+    function fitProjectionToContainer() {
+      const container = document.getElementById('map-view');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      mapWidth = Math.max(280, rect.width);
+      mapHeight = Math.max(200, rect.height);
+
+      svg.attr('viewBox', `0 0 ${mapWidth} ${mapHeight}`);
+
+      const padX = mapWidth < 640 ? 8 : 24;
+      const padY = mapWidth < 640 ? 28 : 24;
+      projection.fitExtent(
+        [[padX, padY], [mapWidth - padX, mapHeight - padY]],
+        { type: 'Sphere' }
+      );
+      pathGenerator = d3.geoPath().projection(projection);
+    }
+
+    function renderStaticMapGeometry() {
+      fitProjectionToContainer();
+
+      sphereLayer.selectAll('path.sphere-bg')
+        .data([{ type: 'Sphere' }])
+        .join('path')
+        .attr('class', 'sphere-bg')
+        .attr('d', pathGenerator)
+        .attr('fill', 'url(#ocean-radial-grad)')
+        .attr('stroke', 'var(--border-color)')
+        .attr('stroke-width', 1.5);
+
+      const graticule = d3.geoGraticule().step([30, 30]);
+      graticuleLayer.selectAll('path.graticule-lines')
+        .data([graticule()])
+        .join('path')
+        .attr('class', 'graticule-lines')
+        .attr('d', pathGenerator)
+        .attr('fill', 'none')
+        .attr('stroke', 'var(--graticule-stroke)')
+        .attr('stroke-width', 0.8);
+
+      const specialLatitudes = [
+        { lat: 0, dash: 'none', width: 1.1 },
+        { lat: 23.436, dash: '4,4', width: 0.9 },
+        { lat: -23.436, dash: '4,4', width: 0.9 }
+      ];
+      const latLinesGeo = specialLatitudes.map(item => ({
+        ...item,
+        geo: {
+          type: 'LineString',
+          coordinates: d3.range(-180, 181, 2).map(lon => [lon, item.lat])
+        }
+      }));
+
+      graticuleLayer.selectAll('path.special-lat')
+        .data(latLinesGeo)
+        .join('path')
+        .attr('class', 'special-lat')
+        .attr('d', d => pathGenerator(d.geo))
+        .attr('fill', 'none')
+        .attr('stroke', 'var(--tropic-stroke)')
+        .attr('stroke-width', d => d.width)
+        .attr('stroke-dasharray', d => d.dash);
+
+      if (worldLandGeo) {
+        landLayer.selectAll('path.country-land')
+          .data(worldLandGeo.features)
+          .join('path')
+          .attr('class', 'country-land')
+          .attr('d', pathGenerator)
+          .attr('fill', 'var(--land-fill)')
+          .attr('stroke', 'var(--land-stroke)')
+          .attr('stroke-width', 0.65)
+          .attr('stroke-linejoin', 'round');
+      }
+
+      oceanLabelsLayer.selectAll('text.ocean-label')
+        .data(OCEAN_LABELS)
+        .join('text')
+        .attr('class', 'ocean-label display-font')
+        .attr('x', d => projection([d.lon, d.lat])[0])
+        .attr('y', d => projection([d.lon, d.lat])[1])
+        .attr('text-anchor', 'middle')
+        .attr('font-size', mapWidth < 640 ? '6px' : '10px')
+        .attr('font-weight', '700')
+        .attr('letter-spacing', '0.16em')
+        .attr('fill', 'var(--ocean-label)')
+        .style('pointer-events', 'none')
+        .text(d => d.name);
+
+      defs.selectAll('#sphere-clip').remove();
+      defs.append('clipPath')
+        .attr('id', 'sphere-clip')
+        .append('path')
+        .attr('d', pathGenerator({ type: 'Sphere' }));
+
+      terminatorLayer.attr('clip-path', 'url(#sphere-clip)');
+    }
+
+    function updateMapDynamicLayers(effectiveDate, subsolar) {
+      const nightPoly = getNightGeoJson(effectiveDate);
+      terminatorLayer.selectAll('path.night-overlay')
+        .data([nightPoly])
+        .join('path')
+        .attr('class', 'night-overlay')
+        .attr('d', pathGenerator)
+        .attr('fill', 'var(--night-fill)')
+        .attr('stroke', 'var(--night-stroke)')
+        .attr('stroke-width', 1.4)
+        .style('pointer-events', 'none');
+
+      const sunCoords = projection([subsolar.lon, subsolar.lat]);
+      const sunGroup = terminatorLayer.selectAll('g.subsolar-marker')
+        .data(sunCoords ? [sunCoords] : [])
+        .join('g')
+        .attr('class', 'subsolar-marker')
+        .attr('transform', d => `translate(${d[0]}, ${d[1]})`)
+        .style('pointer-events', 'none');
+
+      sunGroup.selectAll('circle.sun-halo')
+        .data([0])
+        .join('circle')
+        .attr('class', 'sun-halo')
+        .attr('r', 11)
+        .attr('fill', 'rgba(251, 191, 36, 0.22)');
+
+      sunGroup.selectAll('circle.sun-core')
+        .data([0])
+        .join('circle')
+        .attr('class', 'sun-core')
+        .attr('r', 4.5)
+        .attr('fill', '#fbbf24')
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 1.2);
+
+      const visibleCities = CITIES.filter(c => state.selectedCityIds.has(c.id));
+      const currentTransform = d3.zoomTransform(svg.node());
+      const k = currentTransform.k || 1;
+      const baseScale = isMobileViewport() ? 0.85 : 1;
+      const theme = THEMES[state.themeIndex];
+
+      const pinGroups = pinsLayer.selectAll('g.city-pin-group')
+        .data(visibleCities, d => d.id)
+        .join(
+          enter => {
+            const g = enter.append('g')
+              .attr('class', 'city-pin-group')
+              .style('cursor', 'pointer');
+
+            // Expanded invisible touch target (18px radius) for effortless mobile tapping
+            g.append('circle')
+              .attr('class', 'pin-hit-area')
+              .attr('r', 18)
+              .attr('fill', 'transparent');
+
+            g.append('line')
+              .attr('class', 'pin-leader')
+              .attr('stroke-width', 1);
+
+            g.append('circle')
+              .attr('class', 'pin-pulse')
+              .attr('r', 5.5)
+              .attr('fill', 'none')
+              .attr('stroke-width', 1.5);
+
+            g.append('circle')
+              .attr('class', 'pin-dot')
+              .attr('r', 4.4)
+              .attr('stroke', '#ffffff')
+              .attr('stroke-width', 1.4);
+
+            const labelG = g.append('g').attr('class', 'pin-label-box');
+            labelG.append('rect')
+              .attr('rx', 5)
+              .attr('ry', 5)
+              .attr('height', 18)
+              .attr('stroke-width', 1);
+
+            labelG.append('text')
+              .attr('class', 'pin-label-text mono-font')
+              .attr('dy', '0.34em')
+              .attr('font-size', '9.5px')
+              .attr('font-weight', '600');
+
+            g.on('mouseenter', function(event, d) {
+                if (isMobileViewport()) return;
+                state.hoveredCityId = d.id;
+                d3.select(this).raise();
+                showTooltip(event, d);
+              })
+              .on('mousemove', function(event) {
+                if (isMobileViewport()) return;
+                positionTooltip(event);
+              })
+              .on('mouseleave', function() {
+                if (isMobileViewport()) return;
+                state.hoveredCityId = null;
+                hideTooltip();
+              })
+              .on('click', function(event, d) {
+                event.stopPropagation();
+                state.hoveredCityId = d.id;
+                d3.select(this).raise();
+                showTooltip(event, d);
+              });
+
+            return g;
+          }
+        );
+
+      pinGroups.each(function(d) {
+        const g = d3.select(this);
+        const coords = projection([d.lon, d.lat]);
+        if (!coords) return;
+
+        const isDay = isCityDaytime(d, subsolar);
+        const timeInfo = getCityTimeInfo(d, effectiveDate);
+        const pinColor = isDay ? '#f59e0b' : '#22d3ee';
+
+        g.attr('transform', `translate(${coords[0]}, ${coords[1]}) scale(${baseScale / Math.pow(k, 0.55)})`);
+
+        g.select('circle.pin-pulse')
+          .attr('class', `pin-pulse ${isDay ? 'pin-pulse-day' : 'pin-pulse-night'}`)
+          .attr('stroke', pinColor);
+
+        g.select('circle.pin-dot')
+          .attr('fill', pinColor);
+
+        const labelBox = g.select('g.pin-label-box');
+        const leader = g.select('line.pin-leader');
+
+        if (state.showAllTimes) {
+          labelBox.style('display', null);
+          leader.style('display', null)
+            .attr('x1', 0)
+            .attr('y1', 0)
+            .attr('x2', d.dx)
+            .attr('y2', d.dy)
+            .attr('stroke', pinColor)
+            .attr('stroke-opacity', 0.75);
+
+          const labelStr = `${d.name} ${timeInfo.hm}`;
+          const approxWidth = labelStr.length * 5.8 + 12;
+          const rectX = d.anchor === 'start' ? d.dx : d.dx - approxWidth;
+          const rectY = d.dy - 9;
+
+          labelBox.select('rect')
+            .attr('x', rectX)
+            .attr('y', rectY)
+            .attr('width', approxWidth)
+            .attr('fill', theme.pinLabelBg)
+            .attr('stroke', isDay ? '#f59e0b' : '#22d3ee');
+
+          labelBox.select('text')
+            .attr('x', d.anchor === 'start' ? d.dx + 6 : d.dx - 6)
+            .attr('y', d.dy)
+            .attr('text-anchor', d.anchor)
+            .attr('fill', theme.pinLabelText)
+            .text(labelStr);
+        } else {
+          labelBox.style('display', 'none');
+          leader.style('display', 'none');
+        }
+      });
+    }
+
+    /**
+     * ============================================================================
+     * 5. FLOATING NEON TOOLTIP LOGIC
+     * ============================================================================
+     */
+    const tooltipEl = document.getElementById('map-tooltip');
+
+    function updateTooltipContent(city, effectiveDate, subsolar) {
+      if (!city) return;
+      const isDay = isCityDaytime(city, subsolar);
+      const info = getCityTimeInfo(city, effectiveDate);
+
+      document.getElementById('tt-flag').textContent = city.flag;
+      document.getElementById('tt-city').textContent = city.name;
+      document.getElementById('tt-country').textContent = city.country;
+      document.getElementById('tt-tz').textContent = info.tzAbbr;
+      document.getElementById('tt-time').textContent = info.hms;
+      document.getElementById('tt-weekday').textContent = `${info.weekday}, ${info.dateStr}`;
+
+      const badge = document.getElementById('tt-badge');
+      if (isDay) {
+        badge.textContent = '☀️ Daytime';
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/50';
+        tooltipEl.classList.add('day-glow');
+        tooltipEl.classList.remove('night-glow');
+      } else {
+        badge.textContent = '🌙 Nighttime';
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/50';
+        tooltipEl.classList.add('night-glow');
+        tooltipEl.classList.remove('day-glow');
+      }
+    }
+
+    function positionTooltip(event) {
+      if (isMobileViewport() || !event) return;
+      const pad = 14;
+      const rect = tooltipEl.getBoundingClientRect();
+      let left = event.clientX + pad;
+      let top = event.clientY + pad;
+
+      if (left + rect.width > window.innerWidth - 10) {
+        left = event.clientX - rect.width - pad;
+      }
+      if (top + rect.height > window.innerHeight - 10) {
+        top = event.clientY - rect.height - pad;
+      }
+      tooltipEl.style.left = `${Math.max(8, left)}px`;
+      tooltipEl.style.top = `${Math.max(8, top)}px`;
+    }
+
+    function showTooltip(event, city) {
+      const effDate = getEffectiveDate();
+      const subsolar = getSubsolarPoint(effDate);
+      updateTooltipContent(city, effDate, subsolar);
+      tooltipEl.classList.add('visible');
+      positionTooltip(event);
+    }
+
+    function hideTooltip() {
+      tooltipEl.classList.remove('visible');
+    }
+
+    /**
+     * ============================================================================
+     * 6. HTML5 CANVAS ANALOG CLOCKS DASHBOARD
+     * ============================================================================
+     */
+    const clocksGrid = document.getElementById('clocks-grid');
+
+    function rebuildClocksDashboard() {
+      const visibleCities = CITIES.filter(c => state.selectedCityIds.has(c.id));
+      document.getElementById('dashboard-city-badge').textContent = `${visibleCities.length} Active`;
+
+      if (visibleCities.length === 0) {
+        clocksGrid.innerHTML = `
+          <div class="col-span-full flex flex-col items-center justify-center py-16 text-center opacity-75">
+            <p class="text-sm font-semibold">No cities selected</p>
+            <p class="text-xs mt-1" style="color: var(--text-muted);">Open the city drawer in the top-left to select cities.</p>
+          </div>
+        `;
+        return;
+      }
+
+      clocksGrid.innerHTML = visibleCities.map(city => `
+        <div id="clock-card-${city.id}"
+             class="rounded-2xl border p-2.5 sm:p-3.5 flex flex-col items-center justify-between gap-1.5 sm:gap-2 transition-all duration-300 shadow-sm"
+             style="background-color: var(--bg-panel); border-color: var(--border-color);">
+          
+          <!-- Top City & Flag Header -->
+          <div class="w-full flex items-center justify-between gap-1">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="text-sm sm:text-base leading-none shrink-0">${city.flag}</span>
+              <span class="font-bold text-xs sm:text-sm truncate">${city.name}</span>
+            </div>
+            <span id="clock-badge-${city.id}" class="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase shrink-0">
+              DAY
+            </span>
+          </div>
+
+          <!-- HTML5 Canvas Analog Clock -->
+          <div class="relative w-24 h-24 sm:w-36 sm:h-36 flex items-center justify-center my-0.5 sm:my-1">
+            <canvas id="canvas-clock-${city.id}" width="160" height="160" class="w-full h-full"></canvas>
+          </div>
+
+          <!-- Digital Readout Footer -->
+          <div class="w-full text-center pt-1.5 border-t" style="border-color: var(--border-color);">
+            <div id="clock-digital-${city.id}" class="mono-font text-xs sm:text-base font-bold tracking-tight">
+              12:00:00 AM
+            </div>
+            <div id="clock-meta-${city.id}" class="text-[10px] font-medium truncate" style="color: var(--text-muted);">
+              Mon • UTC
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function drawAnalogClock(canvas, timeInfo, isDay, theme, dialStyle, ms) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = Math.min(cx, cy) - 6;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const faceBg = isDay ? theme.clockBg : '#0b1221';
+      const tickColor = isDay ? theme.clockTick : '#cbd5e1';
+      const ringColor = isDay ? '#f59e0b' : '#22d3ee';
+      const handPrimary = isDay ? theme.clockTick : '#f8fafc';
+      const secondHandColor = isDay ? '#dc2626' : '#22d3ee';
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = faceBg;
+      ctx.fill();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = ringColor;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius - 6, 0, Math.PI * 2);
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = isDay ? 'rgba(120,120,120,0.25)' : 'rgba(148,163,184,0.22)';
+      ctx.stroke();
+
+      for (let i = 0; i < 60; i++) {
+        const angle = (i * Math.PI) / 30 - Math.PI / 2;
+        const isHour = i % 5 === 0;
+        if (dialStyle === 'minimal' && !isHour) continue;
+
+        const innerR = isHour ? radius - 14 : radius - 9;
+        const outerR = radius - 5;
+
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+        ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
+        ctx.lineWidth = isHour ? 2.2 : 1;
+        ctx.strokeStyle = isHour ? ringColor : tickColor;
+        ctx.stroke();
+      }
+
+      if (dialStyle === 'chronograph' || dialStyle === 'classic') {
+        ctx.fillStyle = tickColor;
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nums = dialStyle === 'chronograph' ? [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [12, 3, 6, 9];
+        nums.forEach(num => {
+          const angle = (num * Math.PI) / 6 - Math.PI / 2;
+          const rText = radius - 23;
+          ctx.fillText(String(num), cx + Math.cos(angle) * rText, cy + Math.sin(angle) * rText);
+        });
+      }
+
+      const smoothSec = timeInfo.second + ms / 1000;
+      const smoothMin = timeInfo.minute + smoothSec / 60;
+      const smoothHour = (timeInfo.hour % 12) + smoothMin / 60;
+
+      const hourAngle = (smoothHour * Math.PI) / 6 - Math.PI / 2;
+      const minAngle = (smoothMin * Math.PI) / 30 - Math.PI / 2;
+      const secAngle = (smoothSec * Math.PI) / 30 - Math.PI / 2;
+
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(hourAngle) * 8, cy - Math.sin(hourAngle) * 8);
+      ctx.lineTo(cx + Math.cos(hourAngle) * (radius * 0.52), cy + Math.sin(hourAngle) * (radius * 0.52));
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = handPrimary;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(minAngle) * 10, cy - Math.sin(minAngle) * 10);
+      ctx.lineTo(cx + Math.cos(minAngle) * (radius * 0.74), cy + Math.sin(minAngle) * (radius * 0.74));
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = handPrimary;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(secAngle) * 14, cy - Math.sin(secAngle) * 14);
+      ctx.lineTo(cx + Math.cos(secAngle) * (radius * 0.82), cy + Math.sin(secAngle) * (radius * 0.82));
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = secondHandColor;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3.8, 0, Math.PI * 2);
+      ctx.fillStyle = secondHandColor;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    function updateClocksDashboard(effectiveDate, subsolar) {
+      if (state.activeTab !== 'clocks') return;
+      const theme = THEMES[state.themeIndex];
+      const ms = effectiveDate.getUTCMilliseconds();
+
+      CITIES.forEach(city => {
+        if (!state.selectedCityIds.has(city.id)) return;
+        const isDay = isCityDaytime(city, subsolar);
+        const info = getCityTimeInfo(city, effectiveDate);
+
+        const badge = document.getElementById(`clock-badge-${city.id}`);
+        if (badge) {
+          if (isDay) {
+            badge.textContent = '☀️ DAY';
+            badge.className = 'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase shrink-0 bg-amber-500/20 text-amber-600 border border-amber-500/40';
+          } else {
+            badge.textContent = '🌙 NIGHT';
+            badge.className = 'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase shrink-0 bg-cyan-500/20 text-cyan-500 border border-cyan-500/40';
+          }
+        }
+
+        const digitalEl = document.getElementById(`clock-digital-${city.id}`);
+        if (digitalEl) digitalEl.textContent = info.hms;
+
+        const metaEl = document.getElementById(`clock-meta-${city.id}`);
+        if (metaEl) metaEl.textContent = `${info.weekday}, ${info.dateStr} • ${info.tzAbbr}`;
+
+        const canvas = document.getElementById(`canvas-clock-${city.id}`);
+        drawAnalogClock(canvas, info, isDay, theme, state.dialStyle, ms);
+      });
+    }
+
+    /**
+     * ============================================================================
+     * 7. SIDEBAR DRAWER & CHECKBOXES SYNCHRONIZATION
+     * ============================================================================
+     */
+    function setSidebarState(open) {
+      state.sidebarOpen = open;
+      const sidebar = document.getElementById('city-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+
+      if (isMobileViewport()) {
+        if (open) {
+          sidebar.classList.remove('-translate-x-full');
+          sidebar.classList.add('translate-x-0');
+          backdrop.classList.remove('hidden');
+        } else {
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('translate-x-0');
+          backdrop.classList.add('hidden');
+        }
+      } else {
+        backdrop.classList.add('hidden');
+        if (open) {
+          sidebar.classList.remove('hidden');
+          sidebar.classList.add('flex');
+        } else {
+          sidebar.classList.add('hidden');
+          sidebar.classList.remove('flex');
+        }
+        if (state.activeTab === 'map') {
+          setTimeout(() => {
+            renderStaticMapGeometry();
+            tick();
+          }, 50);
+        }
+      }
+    }
+
+    function renderSidebarList(filterText = '') {
+      const listEl = document.getElementById('city-checkbox-list');
+      const q = filterText.trim().toLowerCase();
+
+      const filtered = CITIES.filter(c =>
+        c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)
+      );
+
+      listEl.innerHTML = filtered.map(city => {
+        const checked = state.selectedCityIds.has(city.id) ? 'checked' : '';
+        return `
+          <label class="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-2.5 sm:py-1.5 rounded-lg cursor-pointer transition-colors hover:opacity-90"
+                 style="background-color: ${checked ? 'var(--bg-panel-alt)' : 'transparent'};">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <input type="checkbox" class="city-checkbox shrink-0" data-city-id="${city.id}" ${checked} />
+              <span class="text-base sm:text-sm leading-none shrink-0">${city.flag}</span>
+              <div class="truncate">
+                <div class="text-xs font-semibold truncate">${city.name}</div>
+                <div class="text-[10px] truncate" style="color: var(--text-muted);">${city.country}</div>
+              </div>
+            </div>
+            <span id="sidebar-time-${city.id}" class="mono-font text-[11px] font-semibold shrink-0" style="color: var(--text-secondary);">
+              --:--
+            </span>
+          </label>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('input.city-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-city-id');
+          if (e.target.checked) {
+            state.selectedCityIds.add(id);
+          } else {
+            state.selectedCityIds.delete(id);
+          }
+          onCitySelectionChanged();
+        });
+      });
+
+      updateSidebarCount();
+    }
+
+    function updateSidebarCount() {
+      const count = state.selectedCityIds.size;
+      document.getElementById('selected-count').textContent = count;
+      const mobileBadge = document.getElementById('mobile-city-badge');
+      if (mobileBadge) mobileBadge.textContent = count;
+    }
+
+    function onCitySelectionChanged() {
+      updateSidebarCount();
+      renderSidebarList(document.getElementById('city-search-input').value);
+      rebuildClocksDashboard();
+      tick();
+    }
+
+    /**
+     * ============================================================================
+     * 8. THEME APPLICATION & HEADER/SLIDER CONTROLS
+     * ============================================================================
+     */
+    function applyTheme(index) {
+      state.themeIndex = index % THEMES.length;
+      const theme = THEMES[state.themeIndex];
+      const root = document.documentElement;
+
+      Object.entries(theme.vars).forEach(([key, val]) => {
+        root.style.setProperty(key, val);
+      });
+
+      document.getElementById('ocean-stop-1').setAttribute('stop-color', theme.vars['--ocean-grad-1']);
+      document.getElementById('ocean-stop-2').setAttribute('stop-color', theme.vars['--ocean-grad-2']);
+      document.querySelectorAll('.theme-name-label').forEach(el => {
+        el.textContent = theme.name;
+      });
+
+      updateTabStyles();
+      tick();
+    }
+
+    function updateTabStyles() {
+      const mapBtn = document.getElementById('tab-map');
+      const clocksBtn = document.getElementById('tab-clocks');
+      const mapView = document.getElementById('map-view');
+      const clocksView = document.getElementById('clocks-view');
+
+      if (state.activeTab === 'map') {
+        mapBtn.style.backgroundColor = 'var(--accent-primary)';
+        mapBtn.style.color = '#ffffff';
+        clocksBtn.style.backgroundColor = 'transparent';
+        clocksBtn.style.color = 'var(--text-secondary)';
+
+        mapView.classList.remove('hidden');
+        mapView.classList.add('flex');
+        clocksView.classList.add('hidden');
+        clocksView.classList.remove('flex');
+
+        renderStaticMapGeometry();
+      } else {
+        clocksBtn.style.backgroundColor = 'var(--accent-primary)';
+        clocksBtn.style.color = '#ffffff';
+        mapBtn.style.backgroundColor = 'transparent';
+        mapBtn.style.color = 'var(--text-secondary)';
+
+        clocksView.classList.remove('hidden');
+        clocksView.classList.add('flex');
+        mapView.classList.add('hidden');
+        mapView.classList.remove('flex');
+
+        hideTooltip();
+        rebuildClocksDashboard();
+      }
+      tick();
+    }
+
+    function updateSliderScaleLabels() {
+      const scaleEl = document.getElementById('slider-scale-labels');
+      if (!scaleEl) return;
+      if (state.use12Hour) {
+        scaleEl.innerHTML = `
+          <span>12 AM</span>
+          <span>04 AM</span>
+          <span>08 AM</span>
+          <span>12 PM</span>
+          <span>04 PM</span>
+          <span>08 PM</span>
+          <span>11:59 PM</span>
+        `;
+      } else {
+        scaleEl.innerHTML = `
+          <span>00:00</span>
+          <span>04:00</span>
+          <span>08:00</span>
+          <span>12:00</span>
+          <span>16:00</span>
+          <span>20:00</span>
+          <span>23:59</span>
+        `;
+      }
+    }
+
+    function updateSliderAndIstDisplay(effectiveDate) {
+      const slider = document.getElementById('ist-time-slider');
+      const badge = document.getElementById('live-indicator-badge');
+
+      if (state.isLiveMode) {
+        state.simulatedIstMinutes = getCurrentIstMinutes();
+        slider.value = state.simulatedIstMinutes;
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> LIVE`;
+        badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 flex items-center gap-1.5';
+      } else {
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> SIM`;
+        badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center gap-1.5';
+      }
+
+      const istInfo = getCityTimeInfo(CITIES[0], effectiveDate);
+      document.getElementById('ist-digital-display').textContent = `${istInfo.hms} IST`;
+
+      const utcRawH = effectiveDate.getUTCHours();
+      const utcM = String(effectiveDate.getUTCMinutes()).padStart(2, '0');
+      const utcS = String(effectiveDate.getUTCSeconds()).padStart(2, '0');
+      if (state.use12Hour) {
+        const utcAmPm = utcRawH >= 12 ? 'PM' : 'AM';
+        const utcH12 = String(utcRawH % 12 === 0 ? 12 : utcRawH % 12).padStart(2, '0');
+        document.getElementById('utc-readout').textContent = `${utcH12}:${utcM}:${utcS} ${utcAmPm}`;
+      } else {
+        const utcH24 = String(utcRawH).padStart(2, '0');
+        document.getElementById('utc-readout').textContent = `${utcH24}:${utcM}:${utcS}`;
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 9. MAIN REAL-TIME SYNCHRONIZATION LOOP
+     * ============================================================================
+     */
+    function tick() {
+      const effectiveDate = getEffectiveDate();
+      const subsolar = getSubsolarPoint(effectiveDate);
+
+      const latDir = subsolar.lat >= 0 ? 'N' : 'S';
+      const lonDir = subsolar.lon >= 0 ? 'E' : 'W';
+      document.getElementById('subsolar-readout').textContent =
+        `${Math.abs(subsolar.lat).toFixed(1)}°${latDir}, ${Math.abs(subsolar.lon).toFixed(1)}°${lonDir}`;
+
+      updateSliderAndIstDisplay(effectiveDate);
+
+      CITIES.forEach(city => {
+        const el = document.getElementById(`sidebar-time-${city.id}`);
+        if (el) {
+          el.textContent = getCityTimeInfo(city, effectiveDate).hm;
+        }
+      });
+
+      if (state.activeTab === 'map') {
+        updateMapDynamicLayers(effectiveDate, subsolar);
+      } else {
+        updateClocksDashboard(effectiveDate, subsolar);
+      }
+
+      if (state.hoveredCityId) {
+        const hoveredCity = CITIES.find(c => c.id === state.hoveredCityId);
+        if (hoveredCity) {
+          updateTooltipContent(hoveredCity, effectiveDate, subsolar);
+        }
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 10. EVENT LISTENERS & TOPOJSON WORLD DATA BOOTSTRAP
+     * ============================================================================
+     */
+    function bindEvents() {
+      // Theme Switchers (Desktop & Mobile)
+      const cycleTheme = () => applyTheme(state.themeIndex + 1);
+      document.getElementById('theme-switcher-btn').addEventListener('click', cycleTheme);
+      document.getElementById('theme-switcher-btn-mobile').addEventListener('click', cycleTheme);
+
+      // Show All Times Toggles (Desktop & Mobile)
+      const toggleShowTimes = () => {
+        state.showAllTimes = !state.showAllTimes;
+        document.querySelectorAll('.times-status-dot').forEach(dot => {
+          dot.className = state.showAllTimes ? 'times-status-dot w-2 h-2 rounded-full bg-emerald-500' : 'times-status-dot w-2 h-2 rounded-full bg-slate-400';
+        });
+        document.querySelectorAll('.times-status-text').forEach(txt => {
+          txt.textContent = state.showAllTimes ? 'ON' : 'OFF';
+        });
+        tick();
+      };
+      document.getElementById('toggle-times-btn').addEventListener('click', toggleShowTimes);
+      document.getElementById('toggle-times-btn-mobile').addEventListener('click', toggleShowTimes);
+
+      // 12-Hour Format Toggles (Desktop & Mobile)
+      const toggle12Hour = () => {
+        state.use12Hour = !state.use12Hour;
+        document.querySelectorAll('.format-12hr-dot').forEach(dot => {
+          dot.className = state.use12Hour ? 'format-12hr-dot w-2 h-2 rounded-full bg-emerald-500' : 'format-12hr-dot w-2 h-2 rounded-full bg-slate-400';
+        });
+        document.querySelectorAll('.format-12hr-text').forEach(txt => {
+          txt.textContent = state.use12Hour ? 'ON' : 'OFF';
+        });
+        updateSliderScaleLabels();
+        tick();
+      };
+      document.getElementById('toggle-12hr-btn').addEventListener('click', toggle12Hour);
+      document.getElementById('toggle-12hr-btn-mobile').addEventListener('click', toggle12Hour);
+
+      // Tab Switching
+      document.getElementById('tab-map').addEventListener('click', () => {
+        state.activeTab = 'map';
+        updateTabStyles();
+      });
+      document.getElementById('tab-clocks').addEventListener('click', () => {
+        state.activeTab = 'clocks';
+        updateTabStyles();
+      });
+
+      // Sidebar Drawer Controls
+      document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+        setSidebarState(!state.sidebarOpen);
+      });
+      document.getElementById('close-sidebar-mobile-btn').addEventListener('click', () => {
+        setSidebarState(false);
+      });
+      document.getElementById('sidebar-backdrop').addEventListener('click', () => {
+        setSidebarState(false);
+      });
+
+      // Select All / Clear All
+      document.getElementById('select-all-btn').addEventListener('click', () => {
+        state.selectedCityIds = new Set(CITIES.map(c => c.id));
+        onCitySelectionChanged();
+      });
+      document.getElementById('clear-all-btn').addEventListener('click', () => {
+        state.selectedCityIds.clear();
+        onCitySelectionChanged();
+      });
+
+      // Sidebar Search
+      document.getElementById('city-search-input').addEventListener('input', (e) => {
+        renderSidebarList(e.target.value);
+      });
+
+      // Dial Style Customization
+      document.getElementById('dial-style-select').addEventListener('change', (e) => {
+        state.dialStyle = e.target.value;
+        tick();
+      });
+
+      // 24-Hour IST Slider Interaction
+      const slider = document.getElementById('ist-time-slider');
+      slider.addEventListener('input', (e) => {
+        state.isLiveMode = false;
+        state.simulatedIstMinutes = parseInt(e.target.value, 10);
+        tick();
+      });
+
+      // Reset to Live Time Buttons
+      const resetToLive = () => {
+        state.isLiveMode = true;
+        state.simulatedIstMinutes = getCurrentIstMinutes();
+        tick();
+      };
+      document.getElementById('reset-live-btn').addEventListener('click', resetToLive);
+      document.getElementById('reset-live-btn-mobile').addEventListener('click', resetToLive);
+
+      // Map Zoom Controls
+      document.getElementById('zoom-in-btn').addEventListener('click', () => {
+        svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.5);
+      });
+      document.getElementById('zoom-out-btn').addEventListener('click', () => {
+        svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.67);
+      });
+      document.getElementById('zoom-reset-btn').addEventListener('click', () => {
+        svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
+      });
+
+      // Dismiss tooltip when clicking empty map space or close button
+      svg.on('click', () => {
+        state.hoveredCityId = null;
+        hideTooltip();
+      });
+      document.getElementById('tt-close-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.hoveredCityId = null;
+        hideTooltip();
+      });
+
+      // Responsive Resize & Orientation Change Handler
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          setSidebarState(!isMobileViewport());
+          if (state.activeTab === 'map') {
+            renderStaticMapGeometry();
+            tick();
+          }
+        }, 120);
+      });
+    }
+
+    async function initApp() {
+      setSidebarState(!isMobileViewport());
+      bindEvents();
+      updateSliderScaleLabels();
+      renderSidebarList();
+      applyTheme(0);
+
+      try {
+        const response = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+        if (!response.ok) throw new Error('Failed to load world-atlas TopoJSON');
+        const topology = await response.json();
+        worldLandGeo = topojson.feature(topology, topology.objects.countries);
+      } catch (err) {
+        console.warn('Primary CDN fallback triggered:', err);
+        try {
+          const fallbackResp = await fetch('https://unpkg.com/world-atlas@2.0.2/countries-110m.json');
+          const topology = await fallbackResp.json();
+          worldLandGeo = topojson.feature(topology, topology.objects.countries);
+        } catch (fallbackErr) {
+          console.error('Could not load world-atlas TopoJSON:', fallbackErr);
+        }
+      }
+
+      document.getElementById('map-loading').style.display = 'none';
+      renderStaticMapGeometry();
+      tick();
+
+      function animateLoop() {
+        tick();
+        requestAnimationFrame(animateLoop);
+      }
+      requestAnimationFrame(animateLoop);
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

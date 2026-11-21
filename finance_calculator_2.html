@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Finance Hub – Advanced Compound Interest Terminal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: #111827;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --input-bg: #1c2536;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --neon-cyan: #00f3ff;
+      --neon-green: #00ff66;
+      --neon-pink: #ff0055;
+      --neon-amber: #ffbe0b;
+      --cyan-glow: 0 0 12px rgba(0, 243, 255, 0.35);
+      --pink-glow: 0 0 12px rgba(255, 0, 85, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 10px 14px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1520px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.4px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .tabs-nav {
+      display: flex;
+      gap: 6px;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      overflow-x: auto;
+      margin-bottom: 10px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 110px;
+      padding: 6px 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover { color: var(--text-main); }
+
+    .tab-btn.active {
+      background: var(--input-bg);
+      color: var(--neon-cyan);
+      border-color: rgba(0, 243, 255, 0.35);
+      box-shadow: var(--cyan-glow);
+    }
+
+    .calc-content { display: none; }
+    .calc-content.active { display: block; }
+
+    /* 3-Column Responsive Grid: 25% | 50-55% | 20-25% */
+    .ci-3col-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    @media (min-width: 1100px) {
+      .ci-3col-grid {
+        grid-template-columns: 25% 1fr 25%;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .card-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: var(--cyan-glow);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-label-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .input-label-container label {
+      font-size: 0.71rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .helper-pill {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--neon-cyan);
+      background: rgba(0, 243, 255, 0.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .currency-symbol {
+      position: absolute;
+      left: 9px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--neon-cyan);
+      pointer-events: none;
+    }
+
+    .input-wrapper input[type="text"],
+    .input-wrapper input[type="number"],
+    .input-wrapper select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 5px 8px 5px 22px;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrapper.no-symbol input,
+    .input-wrapper select {
+      padding-left: 8px;
+    }
+
+    .input-wrapper input:focus,
+    .input-wrapper select:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: var(--cyan-glow);
+    }
+
+    .unit-badge {
+      position: absolute;
+      right: 8px;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--input-bg);
+      border-radius: 3px;
+      outline: none;
+      margin-top: 2px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      cursor: pointer;
+      box-shadow: var(--cyan-glow);
+    }
+
+    .radio-switch-container {
+      display: flex;
+      background: var(--input-bg);
+      padding: 2px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      gap: 2px;
+    }
+
+    .radio-switch-option {
+      flex: 1;
+      text-align: center;
+    }
+
+    .radio-switch-option input[type="radio"] { display: none; }
+
+    .radio-switch-option label {
+      display: block;
+      padding: 4px 5px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .radio-switch-option input[type="radio"]:checked + label {
+      background: var(--card-bg);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0, 243, 255, 0.4);
+      box-shadow: var(--cyan-glow);
+    }
+
+    /* Tax Card & Drawer */
+    .tax-switch-card {
+      background: linear-gradient(135deg, rgba(255, 0, 85, 0.08), rgba(17, 24, 39, 0.9));
+      border: 1px solid rgba(255, 0, 85, 0.28);
+      border-radius: 8px;
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tax-switch-card.active {
+      border-color: var(--neon-pink);
+      box-shadow: var(--pink-glow);
+    }
+
+    .tax-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .tax-title {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tax-badge {
+      background: var(--neon-pink);
+      color: #fff;
+      font-size: 0.58rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .tax-desc {
+      font-size: 0.64rem;
+      color: var(--text-muted);
+    }
+
+    .tax-config-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.64rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+
+    .tax-config-btn:hover { color: #fff; border-color: var(--neon-pink); }
+
+    .tax-drawer {
+      display: none;
+      background: rgba(9, 13, 22, 0.75);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 7px;
+      font-size: 0.66rem;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .tax-drawer.open { display: flex; }
+
+    .slab-row {
+      display: grid;
+      grid-template-columns: 1fr 56px;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .slab-row span { color: var(--text-muted); }
+
+    .slab-row input {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 0.68rem;
+      text-align: right;
+    }
+
+    .big-switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 19px;
+      flex-shrink: 0;
+    }
+
+    .big-switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: var(--input-bg);
+      border: 1px solid var(--card-border);
+      transition: 0.25s;
+      border-radius: 20px;
+    }
+
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 13px;
+      width: 13px;
+      left: 2px;
+      bottom: 2px;
+      background-color: var(--text-muted);
+      transition: 0.25s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider-toggle {
+      background-color: rgba(255, 0, 85, 0.3);
+      border-color: var(--neon-pink);
+    }
+
+    input:checked + .slider-toggle:before {
+      transform: translateX(19px);
+      background-color: var(--neon-pink);
+      box-shadow: var(--pink-glow);
+    }
+
+    /* Center KPI Grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .result-card {
+      background: var(--input-bg);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .result-card.full-width {
+      grid-column: span 2;
+      border-color: rgba(0, 243, 255, 0.3);
+      background: linear-gradient(135deg, rgba(0, 243, 255, 0.08), var(--input-bg));
+    }
+
+    .result-card .label {
+      font-size: 0.64rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .result-card .value {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .result-card .sub-value {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .result-card .value.highlight-green { color: var(--neon-green); }
+    .result-card .value.highlight-cyan { color: var(--neon-cyan); font-size: 1.05rem; }
+    .result-card .value.highlight-pink { color: var(--neon-pink); }
+
+    .chart-container {
+      position: relative;
+      height: 245px;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Right Panel EOY Table */
+    .eoy-table-container {
+      max-height: 455px;
+      overflow-y: auto;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+      font-size: 0.69rem;
+    }
+
+    th:first-child, td:first-child { text-align: left; }
+
+    th {
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      padding: 6px 6px;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      background: #161f30;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 5px 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    tr.final-row td {
+      background: rgba(0, 243, 255, 0.08);
+      font-weight: 700;
+      border-top: 1px solid rgba(0, 243, 255, 0.35);
+    }
+
+    .text-green { color: var(--neon-green); font-weight: 600; }
+    .text-pink { color: var(--neon-pink); font-weight: 600; }
+    .text-cyan { color: var(--neon-cyan); font-weight: 600; }
+
+    /* Collapsible Monthly Schedule */
+    .collapsible-wrapper {
+      margin-top: 10px;
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      overflow: hidden;
+    }
+
+    .collapsible-trigger {
+      width: 100%;
+      padding: 9px 14px;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .arrow-icon {
+      transition: transform 0.25s ease;
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--neon-cyan);
+      border-bottom: 2px solid var(--neon-cyan);
+      transform: rotate(45deg);
+    }
+
+    .collapsible-wrapper.active .arrow-icon { transform: rotate(-135deg); }
+
+    .collapsible-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease-out;
+    }
+
+    .table-container {
+      padding: 0 14px 14px 14px;
+      max-height: 290px;
+      overflow-y: auto;
+    }
+
+    /* Secondary Tabs Compact Grid */
+    .sub-calc-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 900px) {
+      .sub-calc-grid { grid-template-columns: 360px 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>Indian Finance Hub</h1>
+        <p>Precision Compound Interest & Indian Tax Terminal (AY 2026–27 / FY 2025–26 & 2026–27)</p>
+      </div>
+    </header>
+
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('ci', event)">Compound Interest</button>
+      <button class="tab-btn" onclick="switchTab('si', event)">Simple Interest</button>
+      <button class="tab-btn" onclick="switchTab('sip', event)">SIP (Step-Up)</button>
+      <button class="tab-btn" onclick="switchTab('emi', event)">EMI Calculator</button>
+      <button class="tab-btn" onclick="switchTab('inflation', event)">Inflation</button>
+    </nav>
+
+    <!-- 1. COMPOUND INTEREST CALCULATOR -->
+    <div id="ci-calc" class="calc-content active">
+      <div class="ci-3col-grid">
+
+        <!-- LEFT PANEL (25%): CI Parameters -->
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title">CI Parameters</div>
+            <span class="helper-pill" id="ci-freq-badge">Monthly Comp.</span>
+          </div>
+
+          <!-- A. Presets -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Quick Presets</label>
+            </div>
+            <div class="radio-switch-container">
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-preset-1" name="ci-preset" value="1" onchange="applyCIPreset(1)">
+                <label for="ci-preset-1">P1 (35L)</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-preset-2" name="ci-preset" value="2" onchange="applyCIPreset(2)">
+                <label for="ci-preset-2">P2 (50L)</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-preset-3" name="ci-preset" value="3" onchange="applyCIPreset(3)">
+                <label for="ci-preset-3">P3 (65L)</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-preset-4" name="ci-preset" value="4" onchange="applyCIPreset(4)">
+                <label for="ci-preset-4">P4 (1Cr)</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- B. View Mode -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Chart & Timeline View Mode</label>
+            </div>
+            <div class="radio-switch-container">
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-mode-monthly" name="ci-mode" value="monthly" checked onchange="calculateCI()">
+                <label for="ci-mode-monthly">Monthly View</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="ci-mode-yearly" name="ci-mode" value="yearly" onchange="calculateCI()">
+                <label for="ci-mode-yearly">Yearly View</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- C. Annual Tax Toggle + Configurable Slabs -->
+          <div class="tax-switch-card active" id="tax-switch-container">
+            <div class="tax-header-row">
+              <div>
+                <div class="tax-title">Annual Tax <span class="tax-badge" id="tax-regime-label">NEW REGIME AY 26-27</span></div>
+                <div class="tax-desc">Slab tax + Surcharge + 4% Cess on annual interest/trading profit</div>
+              </div>
+              <label class="big-switch">
+                <input type="checkbox" id="ci-tax-switch" checked onchange="updateTaxSwitchState(); calculateCI();">
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+            <button type="button" class="tax-config-btn" onclick="toggleTaxDrawer()">⚙ Configure Slabs, Surcharge & Cess</button>
+            <div class="tax-drawer" id="tax-drawer">
+              <div class="slab-row"><span>Rebate Limit (u/s 87A) ₹</span><input type="number" id="tax-rebate" value="1200000" step="50000" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>₹4L – ₹8L Rate (%)</span><input type="number" id="slab-1" value="5" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>₹8L – ₹12L Rate (%)</span><input type="number" id="slab-2" value="10" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>₹12L – ₹16L Rate (%)</span><input type="number" id="slab-3" value="15" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>₹16L – ₹20L Rate (%)</span><input type="number" id="slab-4" value="20" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>₹20L – ₹24L Rate (%)</span><input type="number" id="slab-5" value="25" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>Above ₹24L Rate (%)</span><input type="number" id="slab-6" value="30" step="1" oninput="calculateCI()"></div>
+              <div class="slab-row"><span>Health & Ed. Cess (%)</span><input type="number" id="tax-cess" value="4" step="0.5" oninput="calculateCI()"></div>
+              <div class="slab-row">
+                <span>Apply Surcharge (&gt;₹50L)</span>
+                <input type="checkbox" id="tax-surcharge-toggle" checked onchange="calculateCI()">
+              </div>
+            </div>
+          </div>
+
+          <!-- D. Principal Amount -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Principal Amount (INR)</label>
+              <span class="helper-pill" id="ci-principal-helper">₹65.00 L</span>
+            </div>
+            <div class="input-wrapper">
+              <span class="currency-symbol">₹</span>
+              <input type="text" id="ci-principal-display" value="65,00,000" oninput="handlePrincipalText(this.value)">
+              <input type="hidden" id="ci-principal" value="6500000">
+            </div>
+            <input type="range" id="ci-principal-slider" min="10000" max="50000000" step="50000" value="6500000" oninput="handlePrincipalSlider(this.value)">
+          </div>
+
+          <!-- E. Monthly Interest Rate (%) -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Monthly Interest Rate (% / mo)</label>
+              <span class="helper-pill" id="ci-annual-equiv">120% Simple / yr</span>
+            </div>
+            <div class="input-wrapper no-symbol">
+              <input type="number" id="ci-rate" value="10" step="0.25" min="0" max="50" oninput="handleRateInput(this.value)">
+              <span class="unit-badge">% / mo</span>
+            </div>
+            <input type="range" id="ci-rate-slider" min="0" max="25" step="0.25" value="10" oninput="handleRateSlider(this.value)">
+          </div>
+
+          <!-- F. Time Period (Months) -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Time Period (Months)</label>
+              <span class="helper-pill" id="ci-time-helper">3.0 Years</span>
+            </div>
+            <div class="input-wrapper no-symbol">
+              <input type="number" id="ci-time" value="36" step="1" min="0" max="360" oninput="handleTimeInput(this.value)">
+              <span class="unit-badge">Months</span>
+            </div>
+            <input type="range" id="ci-time-slider" min="1" max="120" step="1" value="36" oninput="handleTimeSlider(this.value)">
+          </div>
+
+          <!-- G. Compounding Frequency -->
+          <div class="input-group">
+            <div class="input-label-container">
+              <label>Compounding Frequency</label>
+            </div>
+            <div class="radio-switch-container">
+              <div class="radio-switch-option">
+                <input type="radio" id="freq-monthly" name="ci-freq-radio" value="1" checked onchange="calculateCI()">
+                <label for="freq-monthly">Monthly</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="freq-quarterly" name="ci-freq-radio" value="3" onchange="calculateCI()">
+                <label for="freq-quarterly">Quarterly</label>
+              </div>
+              <div class="radio-switch-option">
+                <input type="radio" id="freq-annually" name="ci-freq-radio" value="12" onchange="calculateCI()">
+                <label for="freq-annually">Annually</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER PANEL (50%): KPI Breakdown & Growth Chart -->
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title">Breakdown & Growth Visualization</div>
+            <span class="helper-pill" id="ci-chart-mode-label">Pre-Tax vs Post-Tax (Monthly)</span>
+          </div>
+
+          <div class="results-grid">
+            <div class="result-card">
+              <div class="label">Principal Invested</div>
+              <div class="value" id="ci-out-principal">₹0</div>
+              <div class="sub-value" id="ci-sub-principal">₹0.00 L</div>
+            </div>
+            <div class="result-card">
+              <div class="label">Net Interest Earned (Post-Tax)</div>
+              <div class="value highlight-green" id="ci-out-interest">₹0</div>
+              <div class="sub-value" id="ci-sub-interest">₹0.00 L</div>
+            </div>
+            <div class="result-card">
+              <div class="label">Total Tax Paid</div>
+              <div class="value highlight-pink" id="ci-out-tax">₹0</div>
+              <div class="sub-value" id="ci-sub-tax">₹0.00 L</div>
+            </div>
+            <div class="result-card">
+              <div class="label">Gross Profit (Pre-Tax)</div>
+              <div class="value" id="ci-out-gross">₹0</div>
+              <div class="sub-value" id="ci-sub-gross">₹0.00 L</div>
+            </div>
+            <div class="result-card full-width">
+              <div class="label">Final Amount (Post-Tax)</div>
+              <div class="value highlight-cyan" id="ci-out-total">₹0</div>
+              <div class="sub-value" id="ci-sub-total">₹0.00 L | Pre-Tax Maturity: ₹0</div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="ci-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL (25%): End of Year Balance -->
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title">End of Year Balance (After Tax)</div>
+          </div>
+          <div class="eoy-table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Opening</th>
+                  <th>Interest</th>
+                  <th>Tax</th>
+                  <th>Closing</th>
+                </tr>
+              </thead>
+              <tbody id="ci-eoy-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Collapsible Monthly Breakdown -->
+      <div class="collapsible-wrapper" id="ci-table-wrapper">
+        <button class="collapsible-trigger" onclick="toggleCollapsible('ci-table-wrapper')">
+          <span>Detailed Month-by-Month Accrual, Compounding & Tax Schedule</span>
+          <span class="arrow-icon"></span>
+        </button>
+        <div class="collapsible-content">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Opening Balance</th>
+                  <th>Monthly Interest Accrued</th>
+                  <th>Capitalized Gain</th>
+                  <th>Annual Tax Paid</th>
+                  <th>Closing Post-Tax</th>
+                </tr>
+              </thead>
+              <tbody id="ci-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. SIMPLE INTEREST -->
+    <div id="si-calc" class="calc-content">
+      <div class="sub-calc-grid">
+        <div class="card">
+          <div class="card-title">Simple Interest Parameters</div>
+          <div class="input-group">
+            <label>Principal Amount (₹)</label>
+            <div class="input-wrapper"><span class="currency-symbol">₹</span><input type="number" id="si-principal" value="6500000" min="0" oninput="calculateSI()"></div>
+          </div>
+          <div class="input-group">
+            <label>Annual Interest Rate (%)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="si-rate" value="7.5" step="0.1" min="0" oninput="calculateSI()"><span class="unit-badge">%</span></div>
+          </div>
+          <div class="input-group">
+            <label>Time Period</label>
+            <div style="display:flex; gap:8px;">
+              <div class="input-wrapper no-symbol" style="flex:2;"><input type="number" id="si-time" value="5" min="1" oninput="calculateSI()"></div>
+              <div class="input-wrapper no-symbol" style="flex:1;"><select id="si-time-unit" onchange="calculateSI()"><option value="years">Years</option><option value="months">Months</option></select></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Simple Interest Breakdown</div>
+          <div class="results-grid">
+            <div class="result-card"><div class="label">Principal</div><div class="value" id="si-out-principal">₹0</div></div>
+            <div class="result-card"><div class="label">Total Interest</div><div class="value highlight-green" id="si-out-interest">₹0</div></div>
+            <div class="result-card full-width"><div class="label">Maturity Value</div><div class="value highlight-cyan" id="si-out-total">₹0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SIP -->
+    <div id="sip-calc" class="calc-content">
+      <div class="sub-calc-grid">
+        <div class="card">
+          <div class="card-title">Step-Up SIP Parameters</div>
+          <div class="input-group">
+            <label>Monthly SIP Amount (₹)</label>
+            <div class="input-wrapper"><span class="currency-symbol">₹</span><input type="number" id="sip-monthly" value="25000" min="0" oninput="calculateSIP()"></div>
+          </div>
+          <div class="input-group">
+            <label>Annual Step-Up (%)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="sip-stepup" value="10" min="0" max="50" oninput="calculateSIP()"><span class="unit-badge">%</span></div>
+          </div>
+          <div class="input-group">
+            <label>Expected Annual Return (%)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="sip-rate" value="12" step="0.1" min="0" oninput="calculateSIP()"><span class="unit-badge">%</span></div>
+          </div>
+          <div class="input-group">
+            <label>Duration (Years)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="sip-time" value="15" min="1" oninput="calculateSIP()"><span class="unit-badge">Yrs</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">SIP Wealth Summary</div>
+          <div class="results-grid">
+            <div class="result-card"><div class="label">Total Invested</div><div class="value" id="sip-out-invested">₹0</div></div>
+            <div class="result-card"><div class="label">Wealth Gained</div><div class="value highlight-green" id="sip-out-returns">₹0</div></div>
+            <div class="result-card full-width"><div class="label">Future Corpus</div><div class="value highlight-cyan" id="sip-out-total">₹0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. EMI -->
+    <div id="emi-calc" class="calc-content">
+      <div class="sub-calc-grid">
+        <div class="card">
+          <div class="card-title">Loan EMI Parameters</div>
+          <div class="input-group">
+            <label>Loan Amount (₹)</label>
+            <div class="input-wrapper"><span class="currency-symbol">₹</span><input type="number" id="emi-principal" value="6500000" min="0" oninput="calculateEMI()"></div>
+          </div>
+          <div class="input-group">
+            <label>Annual Interest Rate (%)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="emi-rate" value="8.5" step="0.1" min="0" oninput="calculateEMI()"><span class="unit-badge">%</span></div>
+          </div>
+          <div class="input-group">
+            <label>Tenure (Years)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="emi-tenure" value="15" min="1" oninput="calculateEMI()"><span class="unit-badge">Yrs</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">EMI Breakdown</div>
+          <div class="results-grid">
+            <div class="result-card full-width"><div class="label">Monthly EMI</div><div class="value highlight-pink" id="emi-out-monthly">₹0</div></div>
+            <div class="result-card"><div class="label">Principal</div><div class="value" id="emi-out-principal">₹0</div></div>
+            <div class="result-card"><div class="label">Total Interest</div><div class="value highlight-pink" id="emi-out-interest">₹0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. INFLATION -->
+    <div id="inflation-calc" class="calc-content">
+      <div class="sub-calc-grid">
+        <div class="card">
+          <div class="card-title">Inflation Parameters</div>
+          <div class="input-group">
+            <label>Current Expense / Corpus (₹)</label>
+            <div class="input-wrapper"><span class="currency-symbol">₹</span><input type="number" id="inf-amount" value="6500000" min="0" oninput="calculateInflation()"></div>
+          </div>
+          <div class="input-group">
+            <label>Inflation Rate (%)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="inf-rate" value="6" step="0.1" min="0" oninput="calculateInflation()"><span class="unit-badge">%</span></div>
+          </div>
+          <div class="input-group">
+            <label>Time Period (Years)</label>
+            <div class="input-wrapper no-symbol"><input type="number" id="inf-time" value="10" min="1" oninput="calculateInflation()"><span class="unit-badge">Yrs</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Purchasing Power Impact</div>
+          <div class="results-grid">
+            <div class="result-card"><div class="label">Present Value</div><div class="value" id="inf-out-current">₹0</div></div>
+            <div class="result-card"><div class="label">Inflation Erosion</div><div class="value highlight-pink" id="inf-out-loss">₹0</div></div>
+            <div class="result-card full-width"><div class="label">Future Equivalent Cost</div><div class="value highlight-cyan" id="inf-out-future">₹0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const charts = {};
+
+    // Indian Number Formatting Utilities
+    function formatExactINR(val) {
+      if (!isFinite(val) || isNaN(val)) val = 0;
+      return '₹' + Math.round(val).toLocaleString('en-IN');
+    }
+
+    function formatShortINR(val) {
+      if (!isFinite(val) || isNaN(val)) val = 0;
+      const abs = Math.abs(val);
+      const sign = val < 0 ? '-' : '';
+      if (abs >= 10000000) {
+        return `${sign}₹${(abs / 10000000).toFixed(2)} Cr`;
+      }
+      return `${sign}₹${(abs / 100000).toFixed(2)} L`;
+    }
+
+    function formatDualINR(val) {
+      if (!isFinite(val) || isNaN(val)) val = 0;
+      const exact = formatExactINR(val);
+      const abs = Math.abs(val);
+      if (abs >= 10000000) {
+        return `${exact} (${(val / 10000000).toFixed(2)} Cr)`;
+      } else if (abs >= 100000) {
+        return `${exact} (${(val / 100000).toFixed(2)} L)`;
+      }
+      return exact;
+    }
+
+    // Input & Slider Synchronization
+    function handlePrincipalText(rawStr) {
+      clearCIPresets();
+      const cleaned = rawStr.replace(/[^0-9]/g, '');
+      const num = Math.max(0, parseFloat(cleaned) || 0);
+      document.getElementById('ci-principal').value = num;
+      document.getElementById('ci-principal-display').value = num.toLocaleString('en-IN');
+      document.getElementById('ci-principal-slider').value = Math.min(num, 50000000);
+      calculateCI();
+    }
+
+    function handlePrincipalSlider(val) {
+      clearCIPresets();
+      const num = Math.max(0, parseFloat(val) || 0);
+      document.getElementById('ci-principal').value = num;
+      document.getElementById('ci-principal-display').value = num.toLocaleString('en-IN');
+      calculateCI();
+    }
+
+    function handleRateInput(val) {
+      clearCIPresets();
+      const num = Math.max(0, parseFloat(val) || 0);
+      document.getElementById('ci-rate-slider').value = Math.min(num, 25);
+      calculateCI();
+    }
+
+    function handleRateSlider(val) {
+      clearCIPresets();
+      const num = Math.max(0, parseFloat(val) || 0);
+      document.getElementById('ci-rate').value = num;
+      calculateCI();
+    }
+
+    function handleTimeInput(val) {
+      clearCIPresets();
+      const num = Math.max(0, Math.round(parseFloat(val) || 0));
+      document.getElementById('ci-time-slider').value = Math.min(num, 120);
+      calculateCI();
+    }
+
+    function handleTimeSlider(val) {
+      clearCIPresets();
+      const num = Math.max(0, Math.round(parseFloat(val) || 0));
+      document.getElementById('ci-time').value = num;
+      calculateCI();
+    }
+
+    function applyCIPreset(presetNum) {
+      const presets = {
+        1: { principal: 3500000, rate: 8,  time: 36, freq: '1' },
+        2: { principal: 5000000, rate: 10, time: 48, freq: '1' },
+        3: { principal: 6500000, rate: 10, time: 36, freq: '1' },
+        4: { principal: 10000000, rate: 6, time: 60, freq: '4' }
+      };
+      const p = presets[presetNum];
+      if (!p) return;
+
+      document.getElementById('ci-principal').value = p.principal;
+      document.getElementById('ci-principal-display').value = p.principal.toLocaleString('en-IN');
+      document.getElementById('ci-principal-slider').value = Math.min(p.principal, 50000000);
+
+      document.getElementById('ci-rate').value = p.rate;
+      document.getElementById('ci-rate-slider').value = p.rate;
+
+      document.getElementById('ci-time').value = p.time;
+      document.getElementById('ci-time-slider').value = p.time;
+
+      const freqRadio = document.querySelector(`input[name="ci-freq-radio"][value="${p.freq}"]`);
+      if (freqRadio) freqRadio.checked = true;
+
+      calculateCI();
+    }
+
+    function clearCIPresets() {
+      document.getElementsByName('ci-preset').forEach(r => r.checked = false);
+    }
+
+    function toggleTaxDrawer() {
+      document.getElementById('tax-drawer').classList.toggle('open');
+    }
+
+    function updateTaxSwitchState() {
+      const isChecked = document.getElementById('ci-tax-switch').checked;
+      const card = document.getElementById('tax-switch-container');
+      card.classList.toggle('active', isChecked);
+    }
+
+    // Configurable Indian New Tax Regime Engine (Slabs + Surcharge + Marginal Relief + Cess)
+    function calculateIndianTax(annualTaxableIncome) {
+      if (annualTaxableIncome <= 0) return 0;
+
+      const rebateLimit = parseFloat(document.getElementById('tax-rebate').value) || 0;
+      if (annualTaxableIncome <= rebateLimit) return 0;
+
+      const r1 = (parseFloat(document.getElementById('slab-1').value) || 0) / 100;
+      const r2 = (parseFloat(document.getElementById('slab-2').value) || 0) / 100;
+      const r3 = (parseFloat(document.getElementById('slab-3').value) || 0) / 100;
+      const r4 = (parseFloat(document.getElementById('slab-4').value) || 0) / 100;
+      const r5 = (parseFloat(document.getElementById('slab-5').value) || 0) / 100;
+      const r6 = (parseFloat(document.getElementById('slab-6').value) || 0) / 100;
+      const cessRate = (parseFloat(document.getElementById('tax-cess').value) || 0) / 100;
+      const applySurcharge = document.getElementById('tax-surcharge-toggle').checked;
+
+      function computeSlabTax(inc) {
+        let t = 0;
+        if (inc > 400000)  t += Math.min(inc - 400000, 400000) * r1;
+        if (inc > 800000)  t += Math.min(inc - 800000, 400000) * r2;
+        if (inc > 1200000) t += Math.min(inc - 1200000, 400000) * r3;
+        if (inc > 1600000) t += Math.min(inc - 1600000, 400000) * r4;
+        if (inc > 2000000) t += Math.min(inc - 2000000, 400000) * r5;
+        if (inc > 2400000) t += (inc - 2400000) * r6;
+        return t;
+      }
+
+      let baseTax = computeSlabTax(annualTaxableIncome);
+
+      // Marginal relief just above rebate limit
+      if (rebateLimit > 0 && annualTaxableIncome > rebateLimit) {
+        const excessIncome = annualTaxableIncome - rebateLimit;
+        if (baseTax > excessIncome) {
+          baseTax = excessIncome;
+        }
+      }
+
+      // Surcharge under New Regime (Capped at 25%)
+      let surcharge = 0;
+      if (applySurcharge && annualTaxableIncome > 5000000) {
+        let sRate = 0;
+        let threshold = 5000000;
+        let prevSurchargeRate = 0;
+
+        if (annualTaxableIncome > 20000000) {
+          sRate = 0.25; threshold = 20000000; prevSurchargeRate = 0.15;
+        } else if (annualTaxableIncome > 10000000) {
+          sRate = 0.15; threshold = 10000000; prevSurchargeRate = 0.10;
+        } else {
+          sRate = 0.10; threshold = 5000000; prevSurchargeRate = 0;
+        }
+
+        surcharge = baseTax * sRate;
+        const taxAtThreshold = computeSlabTax(threshold) * (1 + prevSurchargeRate);
+        const maxAllowedTaxPlusSurcharge = taxAtThreshold + (annualTaxableIncome - threshold);
+        if (baseTax + surcharge > maxAllowedTaxPlusSurcharge) {
+          surcharge = Math.max(0, maxAllowedTaxPlusSurcharge - baseTax);
+        }
+      }
+
+      const totalTax = (baseTax + surcharge) * (1 + cessRate);
+      return totalTax;
+    }
+
+    // Core Financial Calculation Engine
+    function calculateCI() {
+      const P = Math.max(0, parseFloat(document.getElementById('ci-principal').value) || 0);
+      const monthlyRatePct = Math.max(0, parseFloat(document.getElementById('ci-rate').value) || 0);
+      const totalMonths = Math.max(0, Math.round(parseFloat(document.getElementById('ci-time').value) || 0));
+      const compPeriodMonths = parseInt(document.querySelector('input[name="ci-freq-radio"]:checked').value, 10) || 1;
+      const isTaxEnabled = document.getElementById('ci-tax-switch').checked;
+      const viewMode = document.querySelector('input[name="ci-mode"]:checked').value;
+
+      // Update Helper Pills
+      const freqNames = { 1: 'Monthly Comp.', 3: 'Quarterly Comp.', 12: 'Annual Comp.' };
+      document.getElementById('ci-freq-badge').innerText = freqNames[compPeriodMonths];
+      document.getElementById('ci-principal-helper').innerText = formatShortINR(P);
+      document.getElementById('ci-annual-equiv').innerText = `${(monthlyRatePct * 12).toFixed(1)}% Simple / yr`;
+      document.getElementById('ci-time-helper').innerText = `${(totalMonths / 12).toFixed(1)} Years`;
+      document.getElementById('ci-chart-mode-label').innerText =
+        `Pre-Tax vs Post-Tax (${viewMode === 'monthly' ? 'Monthly' : 'Yearly'})`;
+
+      const r = monthlyRatePct / 100;
+
+      // Parallel Gross (Pre-Tax) and Post-Tax State Trackers
+      let postCompoundedCapital = P;
+      let postAccruedUncompounded = 0;
+
+      let grossCompoundedCapital = P;
+      let grossAccruedUncompounded = 0;
+
+      let totalTaxPaid = 0;
+      let yearStartPostBalance = P;
+      let yearInterestEarned = 0;
+
+      // Timeline Data for Chart
+      const timeline = [{
+        label: viewMode === 'monthly' ? 'M0' : 'Y0',
+        month: 0,
+        principal: P,
+        postBalance: P,
+        grossBalance: P,
+        cumTax: 0,
+        yearTax: 0
+      }];
+
+      let monthlyHtml = '';
+      let eoyHtml = '';
+
+      for (let m = 1; m <= totalMonths; m++) {
+        const openingPostBalance = postCompoundedCapital + postAccruedUncompounded;
+
+        // 1. Accrue monthly interest on compounded capital base
+        const postMonthInterest = postCompoundedCapital * r;
+        const grossMonthInterest = grossCompoundedCapital * r;
+
+        postAccruedUncompounded += postMonthInterest;
+        grossAccruedUncompounded += grossMonthInterest;
+        yearInterestEarned += postMonthInterest;
+
+        // 2. Capitalize (Compound) at period boundary OR final month
+        let capitalizedGain = 0;
+        if (m % compPeriodMonths === 0 || m === totalMonths) {
+          capitalizedGain = postAccruedUncompounded;
+          postCompoundedCapital += postAccruedUncompounded;
+          postAccruedUncompounded = 0;
+
+          grossCompoundedCapital += grossAccruedUncompounded;
+          grossAccruedUncompounded = 0;
+        }
+
+        // 3. Annual Taxation at each 12-month mark OR final month
+        let taxForThisMonth = 0;
+        if (isTaxEnabled && (m % 12 === 0 || m === totalMonths)) {
+          // Ensure accrued interest is capitalized before computing annual taxable profit
+          const currentPreTaxYearEnd = postCompoundedCapital + postAccruedUncompounded;
+          const annualTaxableProfit = Math.max(0, currentPreTaxYearEnd - yearStartPostBalance);
+          taxForThisMonth = calculateIndianTax(annualTaxableProfit);
+
+          if (taxForThisMonth > 0) {
+            totalTaxPaid += taxForThisMonth;
+            // Deduct tax from compounded capital base so taxed earnings are never double-taxed
+            postCompoundedCapital = Math.max(0, postCompoundedCapital - taxForThisMonth);
+          }
+        }
+
+        const closingPostBalance = postCompoundedCapital + postAccruedUncompounded;
+        const closingGrossBalance = grossCompoundedCapital + grossAccruedUncompounded;
+
+        // Record End-of-Year Row (completed years + final partial year if any)
+        if (m % 12 === 0 || m === totalMonths) {
+          const isPartial = m % 12 !== 0;
+          const yearLabel = isPartial
+            ? `Yr ${Math.ceil(m / 12)} (${m % 12}m)`
+            : `Year ${m / 12}`;
+          const isFinal = m === totalMonths;
+
+          eoyHtml += `<tr class="${isFinal ? 'final-row' : ''}">
+            <td>${yearLabel}</td>
+            <td>${formatShortINR(yearStartPostBalance)}</td>
+            <td class="text-green">+${formatShortINR(yearInterestEarned)}</td>
+            <td class="text-pink">${taxForThisMonth > 0 ? '-' + formatShortINR(taxForThisMonth) : '₹0'}</td>
+            <td class="text-cyan">${formatShortINR(closingPostBalance)}</td>
+          </tr>`;
+
+          if (viewMode === 'yearly') {
+            timeline.push({
+              label: yearLabel,
+              month: m,
+              principal: P,
+              postBalance: closingPostBalance,
+              grossBalance: closingGrossBalance,
+              cumTax: totalTaxPaid,
+              yearTax: taxForThisMonth
+            });
+          }
+
+          yearStartPostBalance = closingPostBalance;
+          yearInterestEarned = 0;
+        }
+
+        if (viewMode === 'monthly') {
+          timeline.push({
+            label: `M${m}`,
+            month: m,
+            principal: P,
+            postBalance: closingPostBalance,
+            grossBalance: closingGrossBalance,
+            cumTax: totalTaxPaid,
+            yearTax: taxForThisMonth
+          });
+        }
+
+        monthlyHtml += `<tr>
+          <td>M${m}</td>
+          <td>${formatExactINR(openingPostBalance)}</td>
+          <td class="text-green">+${formatExactINR(postMonthInterest)}</td>
+          <td>${capitalizedGain > 0 ? formatExactINR(capitalizedGain) : '—'}</td>
+          <td class="text-pink">${taxForThisMonth > 0 ? '-' + formatExactINR(taxForThisMonth) : '₹0'}</td>
+          <td class="text-cyan">${formatExactINR(closingPostBalance)}</td>
+        </tr>`;
+      }
+
+      if (totalMonths === 0) {
+        eoyHtml = `<tr class="final-row"><td>Year 0</td><td>${formatShortINR(P)}</td><td>₹0</td><td>₹0</td><td class="text-cyan">${formatShortINR(P)}</td></tr>`;
+      }
+
+      document.getElementById('ci-eoy-table-body').innerHTML = eoyHtml;
+      document.getElementById('ci-table-body').innerHTML = monthlyHtml;
+
+      // Final KPI Calculations
+      const finalPostTax = postCompoundedCapital + postAccruedUncompounded;
+      const finalPreTax = grossCompoundedCapital + grossAccruedUncompounded;
+      const netInterestEarned = finalPostTax - P;
+      const grossProfit = finalPreTax - P;
+
+      document.getElementById('ci-out-principal').innerText = formatExactINR(P);
+      document.getElementById('ci-sub-principal').innerText = formatShortINR(P);
+
+      document.getElementById('ci-out-interest').innerText = formatExactINR(netInterestEarned);
+      document.getElementById('ci-sub-interest').innerText = formatShortINR(netInterestEarned);
+
+      document.getElementById('ci-out-tax').innerText = formatExactINR(totalTaxPaid);
+      document.getElementById('ci-sub-tax').innerText = formatShortINR(totalTaxPaid);
+
+      document.getElementById('ci-out-gross').innerText = formatExactINR(grossProfit);
+      document.getElementById('ci-sub-gross').innerText = formatShortINR(grossProfit);
+
+      document.getElementById('ci-out-total').innerText = formatExactINR(finalPostTax);
+      document.getElementById('ci-sub-total').innerText =
+        `${formatShortINR(finalPostTax)}  |  Pre-Tax Maturity: ${formatDualINR(finalPreTax)}`;
+
+      renderCIChart(timeline, isTaxEnabled);
+    }
+
+    function renderCIChart(timeline, isTaxEnabled) {
+      const canvasId = 'ci-chart';
+      if (charts[canvasId]) charts[canvasId].destroy();
+
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      const cyanGrad = ctx.createLinearGradient(0, 0, 0, 230);
+      cyanGrad.addColorStop(0, 'rgba(0, 243, 255, 0.35)');
+      cyanGrad.addColorStop(1, 'rgba(0, 243, 255, 0.0)');
+
+      const labels = timeline.map(d => d.label);
+      const postData = timeline.map(d => d.postBalance);
+      const grossData = timeline.map(d => d.grossBalance);
+
+      // Highlight points where annual tax was deducted
+      const pointRadii = timeline.map(d => d.yearTax > 0 ? 4 : 0);
+      const pointColors = timeline.map(d => d.yearTax > 0 ? '#ff0055' : '#00f3ff');
+
+      const datasets = [
+        {
+          label: 'Post-Tax Balance',
+          data: postData,
+          borderColor: '#00f3ff',
+          backgroundColor: cyanGrad,
+          borderWidth: 2.2,
+          fill: true,
+          tension: 0.25,
+          pointRadius: pointRadii,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: '#fff',
+          pointHoverRadius: 5
+        }
+      ];
+
+      if (isTaxEnabled) {
+        datasets.push({
+          label: 'Pre-Tax Growth',
+          data: grossData,
+          borderColor: '#00ff66',
+          borderDash: [5, 4],
+          borderWidth: 1.6,
+          fill: false,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4
+        });
+      }
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 14 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#9ca3af',
+                font: { size: 10 },
+                callback: v => formatShortINR(v)
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: '#d1d5db', boxWidth: 12, font: { size: 10 } }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(17, 24, 39, 0.96)',
+              borderColor: 'rgba(0, 243, 255, 0.4)',
+              borderWidth: 1,
+              callbacks: {
+                afterBody: function(items) {
+                  const idx = items[0].dataIndex;
+                  const pt = timeline[idx];
+                  const netGain = pt.postBalance - pt.principal;
+                  const lines = [
+                    `Principal: ${formatDualINR(pt.principal)}`,
+                    `Net Interest Earned: ${formatDualINR(netGain)}`,
+                    `Cumulative Tax Paid: ${formatDualINR(pt.cumTax)}`
+                  ];
+                  if (pt.yearTax > 0) {
+                    lines.push(`★ Tax Deducted Here: -${formatDualINR(pt.yearTax)}`);
+                  }
+                  return lines;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function switchTab(tabKey, evt) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.calc-content').forEach(c => c.classList.remove('active'));
+      evt.target.classList.add('active');
+      document.getElementById(`${tabKey}-calc`).classList.add('active');
+
+      if (tabKey === 'ci') calculateCI();
+      if (tabKey === 'si') calculateSI();
+      if (tabKey === 'sip') calculateSIP();
+      if (tabKey === 'emi') calculateEMI();
+      if (tabKey === 'inflation') calculateInflation();
+    }
+
+    function toggleCollapsible(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('active');
+      const content = el.querySelector('.collapsible-content');
+      content.style.maxHeight = el.classList.contains('active') ? content.scrollHeight + 'px' : '0';
+    }
+
+    function calculateSI() {
+      const P = Math.max(0, parseFloat(document.getElementById('si-principal').value) || 0);
+      const R = Math.max(0, parseFloat(document.getElementById('si-rate').value) || 0);
+      const T = Math.max(0, parseFloat(document.getElementById('si-time').value) || 0);
+      const unit = document.getElementById('si-time-unit').value;
+      const years = unit === 'months' ? T / 12 : T;
+      const interest = (P * R * years) / 100;
+      document.getElementById('si-out-principal').innerText = formatDualINR(P);
+      document.getElementById('si-out-interest').innerText = formatDualINR(interest);
+      document.getElementById('si-out-total').innerText = formatDualINR(P + interest);
+    }
+
+    function calculateSIP() {
+      let monthlyP = Math.max(0, parseFloat(document.getElementById('sip-monthly').value) || 0);
+      const stepUp = Math.max(0, parseFloat(document.getElementById('sip-stepup').value) || 0) / 100;
+      const R = Math.max(0, parseFloat(document.getElementById('sip-rate').value) || 0);
+      const T = Math.max(0, parseInt(document.getElementById('sip-time').value, 10) || 0);
+      const monthlyRate = R / 12 / 100;
+      let totalInvested = 0, futureValue = 0;
+
+      for (let yr = 1; yr <= T; yr++) {
+        for (let m = 1; m <= 12; m++) {
+          totalInvested += monthlyP;
+          futureValue = (futureValue + monthlyP) * (1 + monthlyRate);
+        }
+        monthlyP *= (1 + stepUp);
+      }
+      document.getElementById('sip-out-invested').innerText = formatDualINR(totalInvested);
+      document.getElementById('sip-out-returns').innerText = formatDualINR(futureValue - totalInvested);
+      document.getElementById('sip-out-total').innerText = formatDualINR(futureValue);
+    }
+
+    function calculateEMI() {
+      const P = Math.max(0, parseFloat(document.getElementById('emi-principal').value) || 0);
+      const R = Math.max(0, parseFloat(document.getElementById('emi-rate').value) || 0);
+      const T = Math.max(1, parseFloat(document.getElementById('emi-tenure').value) || 1);
+      const N = T * 12;
+      const mr = R / 12 / 100;
+      const emi = mr > 0 ? (P * mr * Math.pow(1 + mr, N)) / (Math.pow(1 + mr, N) - 1) : P / N;
+      document.getElementById('emi-out-monthly').innerText = formatDualINR(emi);
+      document.getElementById('emi-out-principal').innerText = formatDualINR(P);
+      document.getElementById('emi-out-interest').innerText = formatDualINR(emi * N - P);
+    }
+
+    function calculateInflation() {
+      const P = Math.max(0, parseFloat(document.getElementById('inf-amount').value) || 0);
+      const R = Math.max(0, parseFloat(document.getElementById('inf-rate').value) || 0);
+      const T = Math.max(0, parseFloat(document.getElementById('inf-time').value) || 0);
+      const fv = P * Math.pow(1 + R / 100, T);
+      document.getElementById('inf-out-current').innerText = formatDualINR(P);
+      document.getElementById('inf-out-loss').innerText = formatDualINR(fv - P);
+      document.getElementById('inf-out-future').innerText = formatDualINR(fv);
+    }
+
+    window.onload = function() {
+      updateTaxSwitchState();
+      calculateCI();
+    };
+  </script>
+</body>
+</html>
